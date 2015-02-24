@@ -99,12 +99,12 @@
   };
 
       var latLngControl;
+      var London = new google.maps.LatLng(51.5, -0.1);
 
       function initialize() {
-        var centerLatLng = new google.maps.LatLng(37.748582,-122.418411);
         var map = new google.maps.Map(document.getElementById('map-canvas'), {
-          'zoom': 10,
-          'center': centerLatLng,
+          'zoom': 15,
+          'center': London,
           'mapTypeId': google.maps.MapTypeId.ROADMAP
         });
 
