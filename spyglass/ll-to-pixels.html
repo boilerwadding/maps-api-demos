@@ -10,6 +10,16 @@
     margin: 0px;
     padding: 0px
   }
+  #console{
+    font-family: 'Courier New, Lucida Console';
+    position: absolute;
+    top:20px;
+    right:20px;
+    height:auto;
+    min-height:50px;
+    width:200px;
+    background-color:white;
+  }
   </style>
   <script src="https://maps.googleapis.com/maps/api/js?v=3.exp&signed_in=true"></script>
   <script>
@@ -99,11 +109,12 @@
   };
 
       var latLngControl;
-      var London = new google.maps.LatLng(51.5, -0.1);
+      var London = new google.maps.LatLng(51.52668090062261, -0.13671407699586524);
+      var map;
 
       function initialize() {
-        var map = new google.maps.Map(document.getElementById('map-canvas'), {
-          'zoom': 15,
+        map = new google.maps.Map(document.getElementById('map-canvas'), {
+          'zoom': 13,
           'center': London,
           'mapTypeId': google.maps.MapTypeId.ROADMAP
         });
@@ -114,12 +125,19 @@
         // Register event listeners
         google.maps.event.addListener(map, 'mouseover', function(mEvent) {
           latLngControl.set('visible', true);
+          document.getElementById("map_canvas2").style.cursor = 'pointer';
         });
         google.maps.event.addListener(map, 'mouseout', function(mEvent) {
           latLngControl.set('visible', false);
         });
         google.maps.event.addListener(map, 'mousemove', function(mEvent) {
           latLngControl.updatePosition(mEvent.latLng);
+        });
+        google.maps.event.addListener(map, 'click', function(mEvent) {
+          var pt = mEvent.latLng;
+          var cnsl = document.getElementById("console");
+          cnsl.innerHTML += 'new google.maps.LatLng(' +pt.lat() + ',' + pt.lng() + "), ";
+          console.log("zoom: " + map.getZoom() + ", centre: " + map.getCenter().toString());
         });
       }
 
@@ -129,5 +147,6 @@
   </head>
   <body>
     <div id="map-canvas"></div>
+    <div id="console"></div>
   </body>
   </html>
