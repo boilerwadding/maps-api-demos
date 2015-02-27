@@ -4,8 +4,7 @@
 <!-- Map overlay based on Josh Livni's demo of drawing labels on top of a Fusion Tables layer,
 http://jlivni.github.io/bearded-demos/label_fade_hack.html-->
   <title>Map overlay clipping demo</title>
-  <meta name="viewport"
-      content="width=device-width, initial-scale=1.0, user-scalable=no">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
   <meta charset="UTF-8">
   <style type="text/css">
     html, body{
@@ -47,12 +46,12 @@ http://jlivni.github.io/bearded-demos/label_fade_hack.html-->
 
   </svg>
 
-  <script type="text/javascript"
-      src="https://maps.googleapis.com/maps/api/js?&sensor=false"></script>
+  <script type="text/javascript" src="https://maps.googleapis.com/maps/api/js?&sensor=false"></script>
+  <script type="text/javascript" src="js/CoordinateHelper.js"></script>
   <script type="text/javascript">
   var map1;
   var map2;
-  var London = new google.maps.LatLng(51.523395, -0.148656);
+  var London = new google.maps.LatLng(51.52260900102891, -0.14849433898927344);
   var traffic;
   var path = [];
   var coordHelper;
@@ -130,59 +129,10 @@ http://jlivni.github.io/bearded-demos/label_fade_hack.html-->
       new google.maps.LatLng(51.52027984939518,-0.16994476318359375)
     ];
 
-    function CoordinateHelper(map) {
-      /**
-      * Offset the control container from the mouse by this amount.
-      */
-      this.ANCHOR_OFFSET_ = new google.maps.Point(8, 8);
-
-      /**
-      * Pointer to the HTML container.
-      */
-      this.node_ = this.createHtmlNode_();
-
-      // Add control to the map. Position is irrelevant.
-      map.controls[google.maps.ControlPosition.TOP].push(this.node_);
-
-
-      // Bind this OverlayView to the map so we can access MapCanvasProjection
-      // to convert LatLng to Point coordinates.
-      this.setMap(map);
-
-      // Register an MVC property to indicate whether this custom control
-      // is visible or hidden. Initially hide control until mouse is over map.
-      this.set('visible', false);
-    }
-
-    // Extend OverlayView so we can access MapCanvasProjection.
-    CoordinateHelper.prototype = new google.maps.OverlayView();
-    CoordinateHelper.prototype.draw = function() {};
-
-    /**
-    * @private
-    * Helper function creates the HTML node which is the control container.
-    * @return {HTMLDivElement}
-    */
-    CoordinateHelper.prototype.createHtmlNode_ = function() {
-      var divNode = document.createElement('div');
-      divNode.id = 'latlng-control';
-      divNode.index = 100;
-      return divNode;
-    };
-
-    /* take a lat,long and just return the pixel position in the current view */
-    CoordinateHelper.prototype.getPixelPosition = function(latLng) {
-      var projection = this.getProjection();
-      var point = projection.fromLatLngToContainerPixel(latLng);
-
-      return point;
-    };
-
-
 
 function initialize() {
   var myOptions = {
-    zoom: 15,
+    zoom: 16,
     center: London,
     mapTypeId: google.maps.MapTypeId.ROADMAP
   };

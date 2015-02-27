@@ -37,7 +37,7 @@
   <script type="text/javascript">
     var map1;
     var map2;
-    var London = new google.maps.LatLng(51.5, -0.1);
+    var London = new google.maps.LatLng(51.52637385203631, -0.12493381500245704);
     var traffic;
     var radius = 200;
     var baseStyles = [
@@ -47,7 +47,7 @@
           { visibility: "off" }
         ]
      }
-   ]
+   ];
    var overlayStyles = [
       {
         elementType: "geometry",
@@ -67,11 +67,11 @@
           { visibility: "on" }
         ]
       }
-    ]
+    ];
 
   function initialize() {
     var myOptions = {
-      zoom: 12,
+      zoom: 15,
       center: London,
       mapTypeId: google.maps.MapTypeId.ROADMAP
     };
@@ -91,47 +91,49 @@
     map1.bindTo('center',map2)
 
     google.maps.event.addListener(map2, 'mousemove', function(event) {
-      var px = event.pixel;
-
-      //Chrome, Safari, Opera
-      var clipPath = "circle(" + radius + "px at " + px.x + "px " + px.y + "px)";
-      document.getElementById("map_canvas2").style.WebkitClipPath = clipPath;
-
-      //firefox
-      var ffClipPath = "url(#svgPath)";
-      var c = document.getElementById("circle");
-      c.cx.baseVal.value = px.x;
-      c.cy.baseVal.value = px.y;
-      document.getElementById("map_canvas2").style.clipPath = ffClipPath;
+      updateClip(event.pixel);
     });
 
     google.maps.event.addListener(map2, 'click', function(event) {
-      var px = event.pixel;
-
-      //Chrome, Safari, Opera
-      var clipPath = "circle(" + radius + "px at " + px.x + "px " + px.y + "px)";
-      document.getElementById("map_canvas2").style.WebkitClipPath = clipPath;
-
-      //firefox
-      var ffClipPath = "url(#svgPath)";
-      var c = document.getElementById("circle");
-      c.cx.baseVal.value = px.x;
-      c.cy.baseVal.value = px.y;
-      document.getElementById("map_canvas2").style.clipPath = ffClipPath;
+      updateClip(event.pixel);
     });
 
   }
 
-  function setOverlay(id){
-    var sel = document.getElementById(id);
-    var val = sel.options[sel.selectedIndex].value;
+  function updateClip(pixel){
+    //Chrome won't dynamically update if referencing an embedded SVG element.
+    var clipPath = "circle(" + radius + "px at " + pixel.x + "px " + pixel.y + "px)";
+    document.getElementById("map_canvas2").style.WebkitClipPath = clipPath;
 
-    if(val.indexOf("google.maps.MapTypeId")==0){
-      map2.setMapTypeId(eval(val));
-      traffic.setMap(null);
-    } else {
-      map2.setMapTypeId(google.maps.MapTypeId.ROADMAP);
-      traffic.setMap(map2);
+    //firefox doesn't support "circle(radius at centerx centery) syntax"
+    var ffClipPath = "url(#svgPath)";
+    var c = document.getElementById("circle");
+    c.cx.baseVal.value = pixel.x;
+    c.cy.baseVal.value = pixel.y;
+    document.getElementById("map_canvas2").style.clipPath = ffClipPath;
+    //document.getElementById("map_canvas2").style.WebkitClipPath = ffClipPath;
+  }
+
+  function setOverlay(){
+    var sel = document.getElementById("overlay");
+    var val = sel.options[sel.selectedIndex].value;
+    switch(val.toUpperCase()){
+      case "TRAFFIC":
+        map2.setMapTypeId(google.maps.MapTypeId.ROADMAP);
+        traffic.setMap(map2);
+        break;
+      case "HYBRID":
+        map2.setMapTypeId(google.maps.MapTypeId.HYBRID);
+        traffic.setMap(null);
+        break;
+      case "TERRAIN":
+        map2.setMapTypeId(google.maps.MapTypeId.TERRAIN);
+        traffic.setMap(null);
+        break;
+      case "LABELS":
+        map2.setMapTypeId(google.maps.MapTypeId.ROADMAP);
+        traffic.setMap(null);
+        break;
     }
   }
 
@@ -145,12 +147,11 @@
     <div id="map_canvas2">
     </div>
     <div id="controls">
-      <select id="overlay" onchange="setOverlay(this.id)">
+      <select id="overlay" onchange="setOverlay()">
         <option value="traffic" selected>Traffic</option>
-        <option value="google.maps.MapTypeId.HYBRID">Satellite</option>
-        <option value="google.maps.MapTypeId.TERRAIN">Terrain</option>
-        <option value="google.maps.MapTypeId.ROADMAP">Labels</option>
-
+        <option value="HYBRID">Satellite</option>
+        <option value="TERRAIN">Terrain</option>
+        <option value="ROADMAP">Labels</option>
       </select>
     </div>
   </body>

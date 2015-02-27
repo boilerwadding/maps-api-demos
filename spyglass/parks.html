@@ -22,8 +22,8 @@ http://jlivni.github.io/bearded-demos/label_fade_hack.html-->
     }
     #map_canvas2{
 
-      -webkit-clip-path: "url(#route)"; //chrome, safari
-      clip-path: "url(#route)"; //firefox
+      -webkit-clip-path: "url(#parks)"; //chrome, safari
+      clip-path: "url(#parks)"; //firefox
     }
     #controls{
       position:absolute;
@@ -34,18 +34,17 @@ http://jlivni.github.io/bearded-demos/label_fade_hack.html-->
   </style>
   <!-- clip regions -->
   <svg height="0" width="0">
-
     <defs>
+      <!-- trick Chrome into updating the clip region by switching to a dummy region & back -->
       <clipPath id="Dummy">
         <polygon points="0,0 0,1 1,1 1,0 0,0" />
       </clipPath>
+      <!-- actual clip shapes to use - dummy values at first -->
       <clipPath id="parks"  clipPathUnits="objectBoundingBox">
         <polygon id="regentsPark" points="100,100 200,100 200,200 100,200 100,100"/>
         <polygon id="hydePark" points="100,100 200,100 200,200 100,200 100,100"/>
       </clipPath>
-
     </defs>
-
   </svg>
 
   <script type="text/javascript" src="https://maps.googleapis.com/maps/api/js?&sensor=false"></script>
@@ -53,12 +52,12 @@ http://jlivni.github.io/bearded-demos/label_fade_hack.html-->
   <script type="text/javascript">
   var map1;
   var map2;
-  var London = new google.maps.LatLng(51.523395, -0.148656);
+  var London = new google.maps.LatLng(51.519496, -0.180242);
   var traffic;
   var path = [];
   var coordHelper;
 
-
+  //define some regions to use as clip shapes
     var regentsPark = [
       new google.maps.LatLng(51.530239180823926,-0.1672840118408203),
       new google.maps.LatLng(51.531387167469674,-0.16668319702148438),
@@ -126,55 +125,52 @@ http://jlivni.github.io/bearded-demos/label_fade_hack.html-->
 
 function initialize() {
   var myOptions = {
-    zoom: 15,
+    zoom: 14,
     center: London,
-    mapTypeId: google.maps.MapTypeId.ROADMAP
-  };
-  var myOptions2 = {
-    zoom: 15,
-    center: London,
-    mapTypeId: google.maps.MapTypeId.HYBRID
+    mapTypeId: google.maps.MapTypeId.ROADMAP,
+    mapTypeControl: true,
+    mapTypeControlOptions: {
+      mapTypeIds: [
+        google.maps.MapTypeId.ROADMAP,
+        google.maps.MapTypeId.HYBRID,
+        google.maps.MapTypeId.TERRAIN
+      ]
+    }
   };
   map1 = new google.maps.Map(document.getElementById('map_canvas1'), myOptions);
-  map2 = new google.maps.Map(document.getElementById('map_canvas2'), myOptions2);
 
-  //map1.set('styles', baseStyles);
-  //map2.set('styles', overlayStyles);
+  myOptions.mapTypeId = google.maps.MapTypeId.HYBRID;
+  map2 = new google.maps.Map(document.getElementById('map_canvas2'), myOptions);
 
   coordHelper = new CoordinateHelper(map2);
 
   //instantiating the map seems to override transparent css
   document.getElementById('map_canvas2').style.background ='transparent';
+
+  //apply the initial CSS to the top map
   document.getElementById("map_canvas2").style.WebkitClipPath = 'url(#parks)';
   document.getElementById("map_canvas2").style.clipPath = 'url(#parks)';
 
+  //use MVCObject binding to keep the two maps
   map1.bindTo('zoom',map2)
   map1.bindTo('center',map2)
 
-  google.maps.event.addListener(map2, 'zoom_changed', function(mEvent) {
+  //hide the clip shape whilst the map is moved.
+  //Chrome seems to need to reset the -webkit-clip-path CSS property in order to update it
+  //so keeing it visible causes it to show the wrong area for a while.
+
+  google.maps.event.addListener(map2, 'bounds_changed', function(mEvent) {
     hideClip();
     updateSVGPath();
   });
+
+  //When the user has finished using the map, show the clip again
   google.maps.event.addListener(map2, 'idle', function(mEvent) {
     showClip();
   });
-  google.maps.event.addListener(map2, 'bounds_changed', function(mEvent) {
-    //hideClip();
-    updateSVGPath();
-  });
-  google.maps.event.addListener(map2, 'center_changed', function(mEvent) {
-    hideClip();
-  });
-  google.maps.event.addListener(map2, 'dragstart', function(mEvent) {
-    //hide overlay whilst dragging
-    hideClip();
-  });
-  google.maps.event.addListener(map2, 'dragend', function(mEvent) {
-    //show overlay
-    updateSVGPath()
-  });
 }
 
+//show & hide clip shapes
 function hideClip(){
   var mc2 = document.getElementById("map_canvas2").style;
   mc2.WebkitClipPath = 'url(#Dummy)';
@@ -187,7 +183,7 @@ function showClip(){
   mc2.clipPath = 'url(#parks)';
 }
 
-
+//recalculate the clip in image coordinates and update the SVG shape
 function updateSVGPath(){
   var clip = document.getElementById("regentsPark");
   var clip2 = document.getElementById("hydePark");
@@ -216,7 +212,6 @@ google.maps.event.addDomListener(window, 'load', initialize);
 </script>
   </head>
   <body>
-
     <div id="map_canvas1"></div>
     <div id="map_canvas2"></div>
   </body>
