@@ -1,0 +1,100 @@
+<!DOCTYPE html>
+<html>
+  <head>
+<!-- Based on Josh Livni's demo of drawing labels on top of a Fusion Tables layer,
+http://jlivni.github.io/bearded-demos/label_fade_hack.html-->
+  <title>Magnifier map inset demo</title>
+  <meta name="viewport"
+      content="width=device-width, initial-scale=1.0, user-scalable=no">
+  <meta charset="UTF-8">
+  <style type="text/css">
+    html, body{
+      margin: 0;
+      padding: 0;
+      height: 100%;
+    }
+    #map_canvas1, #map_canvas2{
+      height:100%;
+      width:100%;
+      position:absolute;
+      top:0px;
+      left:0px;
+    }
+    #map_canvas2{
+      clip-path: "url(#svgPath)"; //chrome, safari, opera
+      -webkit-clip-path: "circle(200px at center)"; //firefox
+    }
+    #controls{
+      position:absolute;
+      top:10px;
+      left:100px;
+    }
+
+  </style>
+  <!-- clip region for Firefox -->
+  <svg height="0" width="0">
+    <defs>
+      <clipPath id="svgPath">
+        <circle id="circle" stroke="#000000" stroke-miterlimit="10" cx="400" cy="400" r="200" />
+      </clipPath>
+    </defs>
+  </svg>
+
+  <script type="text/javascript"
+      src="https://maps.googleapis.com/maps/api/js?&sensor=false"></script>
+  <script type="text/javascript">
+    var map1;
+    var map2;
+    var London = new google.maps.LatLng(51.5, -0.1);
+    var radius = 150;
+
+  function initialize() {
+
+    var myOptions = {
+      zoom: 15,
+      center: London,
+      mapTypeId: google.maps.MapTypeId.ROADMAP
+    };
+    var myOptions2 = {
+      zoom: 16,
+      center: London,
+      mapTypeId: google.maps.MapTypeId.HYBRID
+    };
+    map1 = new google.maps.Map(document.getElementById('map_canvas1'), myOptions);
+    map2 = new google.maps.Map(document.getElementById('map_canvas2'), myOptions2);
+
+    var canv = document.getElementById('map_canvas2');
+
+    //instantiating the map seems to override transparent css
+    canv.style.background ='transparent';
+
+    map1.bindTo('center',map2);
+    map1.bindTo('zoom', map2);
+
+    var canvasWidth = canv.offsetWidth;
+    var canvasHeight = canv.offsetHeight;
+    var centerPx = canvasWidth/2;
+    var centerPy = canvasHeight/2;
+
+    var clipPath = "circle(" + radius + "px at " + centerPx + "px " + centerPy + "px)";
+    document.getElementById("map_canvas2").style.WebkitClipPath = clipPath;
+
+    //firefox
+    var ffClipPath = "url(#svgPath)";
+    var c = document.getElementById("circle");
+    c.cx.baseVal.value = centerPx;
+    c.cy.baseVal.value = centerPy;
+    document.getElementById("map_canvas2").style.clipPath = ffClipPath;
+
+  }
+
+  google.maps.event.addDomListener(window, 'load', initialize);
+
+</script>
+  </head>
+  <body>
+
+    <div id="map_canvas1"></div>
+    <div id="map_canvas2"></div>
+  </body>
+</html>

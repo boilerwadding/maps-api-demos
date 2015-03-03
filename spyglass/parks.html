@@ -1,0 +1,218 @@
+<!DOCTYPE html>
+<html>
+  <head>
+<!-- Map overlay based on Josh Livni's demo of drawing labels on top of a Fusion Tables layer,
+http://jlivni.github.io/bearded-demos/label_fade_hack.html-->
+  <title>Map overlay clipping demo</title>
+  <meta name="viewport"
+      content="width=device-width, initial-scale=1.0, user-scalable=no">
+  <meta charset="UTF-8">
+  <style type="text/css">
+    html, body{
+      margin: 0;
+      padding: 0;
+      height: 100%;
+    }
+    #map_canvas1, #map_canvas2{
+      height:100%;
+      width:100%;
+      position:absolute;
+      top:0px;
+      left:0px;
+    }
+    #map_canvas2{
+
+      -webkit-clip-path: "url(#parks)"; //chrome, safari
+      clip-path: "url(#parks)"; //firefox
+    }
+    #controls{
+      position:absolute;
+      top:10px;
+      left:100px;
+    }
+
+  </style>
+  <!-- clip regions -->
+  <svg height="0" width="0">
+    <defs>
+      <!-- trick Chrome into updating the clip region by switching to a dummy region & back -->
+      <clipPath id="Dummy">
+        <polygon points="0,0 0,1 1,1 1,0 0,0" />
+      </clipPath>
+      <!-- actual clip shapes to use - dummy values at first -->
+      <clipPath id="parks"  clipPathUnits="objectBoundingBox">
+        <polygon id="regentsPark" points="100,100 200,100 200,200 100,200 100,100"/>
+        <polygon id="hydePark" points="100,100 200,100 200,200 100,200 100,100"/>
+      </clipPath>
+    </defs>
+  </svg>
+
+  <script type="text/javascript" src="https://maps.googleapis.com/maps/api/js?&sensor=false"></script>
+  <script type="text/javascript" src="js/CoordinateHelper.js"></script>
+  <script type="text/javascript">
+  var map1;
+  var map2;
+  var London = new google.maps.LatLng(51.519496, -0.180242);
+  var traffic;
+  var path = [];
+  var coordHelper;
+
+  //define some regions to use as clip shapes
+    var regentsPark = [
+      new google.maps.LatLng(51.530239180823926,-0.1672840118408203),
+      new google.maps.LatLng(51.531387167469674,-0.16668319702148438),
+      new google.maps.LatLng(51.532935568716304,-0.1659107208251953),
+      new google.maps.LatLng(51.53432374574742,-0.1645803451538086),
+      new google.maps.LatLng(51.53483095371816,-0.1636362075805664),
+      new google.maps.LatLng(51.53531146131916,-0.1624774932861328),
+      new google.maps.LatLng(51.53611229604872,-0.1597309112548828),
+      new google.maps.LatLng(51.53677964756013,-0.15711307525634766),
+      new google.maps.LatLng(51.53726013458968,-0.15453815460205078),
+      new google.maps.LatLng(51.53742029580566,-0.15187740325927734),
+      new google.maps.LatLng(51.537153360132564,-0.1499462127685547),
+      new google.maps.LatLng(51.536539402143234,-0.1483154296875),
+      new google.maps.LatLng(51.53611229604872,-0.1473712921142578),
+      new google.maps.LatLng(51.5360055188989,-0.14711380004882812),
+      new google.maps.LatLng(51.53552501862473,-0.1473712921142578),
+      new google.maps.LatLng(51.53536485073949,-0.1483154296875),
+      new google.maps.LatLng(51.530239180823926,-0.14621257781982422),
+      new google.maps.LatLng(51.525299838315014,-0.14591217041015625),
+      new google.maps.LatLng(51.524124996893335,-0.1528644561767578),
+      new google.maps.LatLng(51.52367107277131,-0.15535354614257812),
+      new google.maps.LatLng(51.524739122326764,-0.1581430435180664),
+      new google.maps.LatLng(51.52503283156269,-0.1588726043701172),
+      new google.maps.LatLng(51.526287749684904,-0.15981674194335938),
+      new google.maps.LatLng(51.52756933249506,-0.1615762710571289),
+      new google.maps.LatLng(51.52882418070983,-0.1636791229248047),
+      new google.maps.LatLng(51.52842370099463,-0.16561031341552734),
+      new google.maps.LatLng(51.5296251295721,-0.16715526580810547),
+      new google.maps.LatLng(51.530052296537086,-0.16741275787353516),
+      new google.maps.LatLng(51.530239180823926,-0.1672840118408203)
+    ];
+
+    var hydePark = [
+      new google.maps.LatLng(51.50994440666998,-0.1897716522216797),
+      new google.maps.LatLng(51.51031833953911,-0.1842355728149414),
+      new google.maps.LatLng(51.5111730317151,-0.17766952514648438),
+      new google.maps.LatLng(51.51178733181241,-0.17312049865722656),
+      new google.maps.LatLng(51.51285566007781,-0.16213417053222656),
+      new google.maps.LatLng(51.51226808263225,-0.1611471176147461),
+      new google.maps.LatLng(51.51237491545877,-0.1590442657470703),
+      new google.maps.LatLng(51.51234820727565,-0.1588726043701172),
+      new google.maps.LatLng(51.50999782583918,-0.1574993133544922),
+      new google.maps.LatLng(51.506151485557524,-0.1526927947998047),
+      new google.maps.LatLng(51.50537683608064,-0.1522207260131836),
+      new google.maps.LatLng(51.504308332433446,-0.15234947204589844),
+      new google.maps.LatLng(51.50361379162684,-0.15350818634033203),
+      new google.maps.LatLng(51.50299938131981,-0.15762805938720703),
+      new google.maps.LatLng(51.50243839076119,-0.16483783721923828),
+      new google.maps.LatLng(51.50233153463369,-0.17427921295166016),
+      new google.maps.LatLng(51.50230482056266,-0.17500877380371094),
+      new google.maps.LatLng(51.50185067895931,-0.17505168914794922),
+      new google.maps.LatLng(51.501690392607,-0.1768970489501953),
+      new google.maps.LatLng(51.50177053585362,-0.17882823944091797),
+      new google.maps.LatLng(51.50161024921944,-0.18028736114501953),
+      new google.maps.LatLng(51.501823964606416,-0.18372058868408203),
+      new google.maps.LatLng(51.50249181873096,-0.18732547760009766),
+      new google.maps.LatLng(51.50412134171919,-0.18818378448486328),
+      new google.maps.LatLng(51.50452203516731,-0.18535137176513672),
+      new google.maps.LatLng(51.50721994598464,-0.1865100860595703),
+      new google.maps.LatLng(51.50681927626061,-0.18934249877929688),
+      new google.maps.LatLng(51.50949034120275,-0.1906728744506836),
+      new google.maps.LatLng(51.50957047073169,-0.18959999084472656),
+      new google.maps.LatLng(51.50994440666998,-0.1897716522216797)
+    ];
+
+function initialize() {
+  var myOptions = {
+    zoom: 14,
+    center: London,
+    mapTypeId: google.maps.MapTypeId.ROADMAP,
+    mapTypeControl: true,
+    mapTypeControlOptions: {
+      mapTypeIds: [
+        google.maps.MapTypeId.ROADMAP,
+        google.maps.MapTypeId.HYBRID,
+        google.maps.MapTypeId.TERRAIN
+      ]
+    }
+  };
+  map1 = new google.maps.Map(document.getElementById('map_canvas1'), myOptions);
+
+  myOptions.mapTypeId = google.maps.MapTypeId.HYBRID;
+  map2 = new google.maps.Map(document.getElementById('map_canvas2'), myOptions);
+
+  coordHelper = new CoordinateHelper(map2);
+
+  //instantiating the map seems to override transparent css
+  document.getElementById('map_canvas2').style.background ='transparent';
+
+  //apply the initial CSS to the top map
+  document.getElementById("map_canvas2").style.WebkitClipPath = 'url(#parks)';
+  document.getElementById("map_canvas2").style.clipPath = 'url(#parks)';
+
+  //use MVCObject binding to keep the two maps
+  map1.bindTo('zoom',map2)
+  map1.bindTo('center',map2)
+
+  //hide the clip shape whilst the map is moved.
+  //Chrome seems to need to reset the -webkit-clip-path CSS property in order to update it
+  //so keeing it visible causes it to show the wrong area for a while.
+
+  google.maps.event.addListener(map2, 'bounds_changed', function(mEvent) {
+    hideClip();
+    updateSVGPath();
+  });
+
+  //When the user has finished using the map, show the clip again
+  google.maps.event.addListener(map2, 'idle', function(mEvent) {
+    showClip();
+  });
+}
+
+//show & hide clip shapes
+function hideClip(){
+  var mc2 = document.getElementById("map_canvas2").style;
+  mc2.WebkitClipPath = 'url(#Dummy)';
+  mc2.clipPath = 'url(#Dummy)';
+}
+
+function showClip(){
+  var mc2 = document.getElementById("map_canvas2").style;
+  mc2.WebkitClipPath = 'url(#parks)';
+  mc2.clipPath = 'url(#parks)';
+}
+
+//recalculate the clip in image coordinates and update the SVG shape
+function updateSVGPath(){
+  var clip = document.getElementById("regentsPark");
+  var clip2 = document.getElementById("hydePark");
+  var mapWidth = document.getElementById("map_canvas2").offsetWidth;
+  var mapHeight = document.getElementById("map_canvas2").offsetHeight;
+  path = [];
+  for(var p in regentsPark){
+    var px = coordHelper.getPixelPosition(regentsPark[p]);
+    var relativeX = px.x/mapWidth;
+    var relativeY = px.y/mapHeight;
+    path.push("" + relativeX + "," + relativeY + "");
+  }
+  clip.setAttribute("points", path.join(" "));
+  path = [];
+  for(var h in hydePark){
+    var px = coordHelper.getPixelPosition(hydePark[h]);
+    var relativeX = px.x/mapWidth;
+    var relativeY = px.y/mapHeight;
+    path.push("" + relativeX + "," + relativeY + "");
+  }
+  clip2.setAttribute("points", path.join(" "));
+}
+
+google.maps.event.addDomListener(window, 'load', initialize);
+
+</script>
+  </head>
+  <body>
+    <div id="map_canvas1"></div>
+    <div id="map_canvas2"></div>
+  </body>
+</html>
