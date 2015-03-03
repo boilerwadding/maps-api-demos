@@ -125,7 +125,7 @@ http://jlivni.github.io/bearded-demos/label_fade_hack.html-->
 
 function initialize() {
   var myOptions = {
-    zoom: 14,
+    zoom: 13,
     center: London,
     mapTypeId: google.maps.MapTypeId.ROADMAP,
     mapTypeControl: true,
@@ -151,7 +151,7 @@ function initialize() {
   document.getElementById("map_canvas2").style.WebkitClipPath = 'url(#parks)';
   document.getElementById("map_canvas2").style.clipPath = 'url(#parks)';
 
-  //use MVCObject binding to keep the two maps
+  //use MVCObject binding to keep the two maps in sync
   map1.bindTo('zoom',map2)
   map1.bindTo('center',map2)
 
@@ -162,6 +162,11 @@ function initialize() {
   google.maps.event.addListener(map2, 'bounds_changed', function(mEvent) {
     hideClip();
     updateSVGPath();
+  });
+
+  //Chrome on Android doesn't hid the clipped map when dragging
+  google.maps.event.addListener(map2, 'dragstart', function(mEvent) {
+    hideClip();
   });
 
   //When the user has finished using the map, show the clip again
@@ -183,6 +188,11 @@ function showClip(){
   mc2.clipPath = 'url(#parks)';
 }
 
+function latLngToPoint(latLng){
+  var projection = map1.getProjection();
+  return projection.fromLatLngToPoint(latLng);
+}
+
 //recalculate the clip in image coordinates and update the SVG shape
 function updateSVGPath(){
   var clip = document.getElementById("regentsPark");
@@ -194,6 +204,7 @@ function updateSVGPath(){
     var px = coordHelper.getPixelPosition(regentsPark[p]);
     var relativeX = px.x/mapWidth;
     var relativeY = px.y/mapHeight;
+    //path.push("" + px.x + "," + px.y + "");
     path.push("" + relativeX + "," + relativeY + "");
   }
   clip.setAttribute("points", path.join(" "));

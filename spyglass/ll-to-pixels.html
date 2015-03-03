@@ -102,8 +102,8 @@
 
   /* take a lat,long and just return the pixel position in the current view */
   LatLngControl.prototype.getPixelPosition = function(latLng) {
-    var projection = this.getProjection();
-    var point = projection.fromLatLngToContainerPixel(latLng);
+    var projection = map.getProjection(); //this.getProjection();
+    var point = projection.fromLatLngToPoint(latLng); //fromLatLngToContainerPixel(latLng);
 
     return point;
   };
@@ -125,7 +125,7 @@
         // Register event listeners
         google.maps.event.addListener(map, 'mouseover', function(mEvent) {
           latLngControl.set('visible', true);
-          document.getElementById("map_canvas2").style.cursor = 'pointer';
+          document.getElementById("map-canvas").style.cursor = 'pointer';
         });
         google.maps.event.addListener(map, 'mouseout', function(mEvent) {
           latLngControl.set('visible', false);
