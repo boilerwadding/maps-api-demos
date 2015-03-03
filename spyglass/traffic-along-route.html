@@ -1,0 +1,221 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <!-- Map overlay technique based on Josh Livni's demo of drawing labels on top of a Fusion Tables layer,
+    http://jlivni.github.io/bearded-demos/label_fade_hack.html -->
+    <!-- Read about MVCObject binding, used to keep the two maps in sync:
+    https://developers.google.com/maps/articles/mvcfun -->
+    <!-- Lat,Lng to Pixel conversion uses Google Maps API sample code from
+    http://gmaps-samples-v3.googlecode.com/svn/trunk/latlng-to-coord-control/latlng-to-coord-control.html -->
+  <title>Clip traffic to a route</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+  <meta charset="UTF-8">
+  <style type="text/css">
+    html, body{
+      margin: 0;
+      padding: 0;
+      height: 100%;
+    }
+    #map_canvas1, #map_canvas2{
+      height:100%;
+      width:100%;
+      position:absolute;
+      top:0px;
+      left:0px;
+    }
+    #controls{
+      position:absolute;
+      top:10px;
+      left:100px;
+    }
+
+  </style>
+  <!-- clip regions -->
+  <svg height="0" width="0">
+    <defs>
+      <clipPath id="Dummy">
+        <polygon points="0,0 0,1 1,1 1,0 0,0" />
+      </clipPath>
+      <clipPath id="route"  clipPathUnits="objectBoundingBox">
+        <polygon id="dynamicPolygon" points="0.5,0.5 0.5,0.75 0.75,0.75 0.75,0.5 0.5,0.5"/>
+      </clipPath>
+    </defs>
+  </svg>
+
+  <script type="text/javascript" src="https://maps.googleapis.com/maps/api/js?&sensor=false"></script>
+  <script type="text/javascript" src="js/CoordinateHelper.js"></script>
+  <script type="text/javascript">
+  var map1;
+  var map2;
+  var London = new google.maps.LatLng(51.52260900102891, -0.14849433898927344);
+  var traffic;
+  var path = [];
+  var coordHelper;
+
+  var overlayStyles = [
+      {
+        elementType: "labels",
+          stylers: [
+            { visibility: "off" }
+          ]
+      },
+      {
+        elementType: "geometry",
+        stylers: [
+          { visibility: "off" },
+          { saturation: -100 }
+          ]
+      },{
+        featureType: "road",
+        stylers: [
+          { visibility: "simplified" }
+          ]
+      },{
+        featureType: "administrative",
+        elementType: "labels",
+        stylers: [
+          { visibility: "on" }
+          ]
+      }
+    ];
+
+    //shape that defines the region of overlay map to show
+    var polygon = [
+      new google.maps.LatLng(51.52027984939518,-0.16994476318359375),
+      new google.maps.LatLng(51.520493477218274,-0.1684427261352539),
+      new google.maps.LatLng(51.52089402668564,-0.1666402816772461),
+      new google.maps.LatLng(51.521107651627744,-0.16466617584228516),
+      new google.maps.LatLng(51.52145479002144,-0.16286373138427734),
+      new google.maps.LatLng(51.52174852044161,-0.16140460968017578),
+      new google.maps.LatLng(51.52201554645227,-0.15990257263183594),
+      new google.maps.LatLng(51.522656402489694,-0.1561260223388672),
+      new google.maps.LatLng(51.52324384593472,-0.1526927947998047),
+      new google.maps.LatLng(51.523510863177314,-0.14955997467041016),
+      new google.maps.LatLng(51.5240715942903,-0.1459980010986328),
+      new google.maps.LatLng(51.52423180191151,-0.14449596405029297),
+      new google.maps.LatLng(51.52409829559966,-0.14277935028076172),
+      new google.maps.LatLng(51.524952729231686,-0.13973236083984375),
+      new google.maps.LatLng(51.52543334110404,-0.13805866241455078),
+      new google.maps.LatLng(51.52620764956151,-0.13509750366210938),
+      new google.maps.LatLng(51.526795047194064,-0.13333797454833984),
+      new google.maps.LatLng(51.52751593393153,-0.13106346130371094),
+      new google.maps.LatLng(51.5271154427087,-0.13054847717285156),
+      new google.maps.LatLng(51.52658144893172,-0.13192176818847656),
+      new google.maps.LatLng(51.52540664057756,-0.13535499572753906),
+      new google.maps.LatLng(51.52489932759941,-0.13797283172607422),
+      new google.maps.LatLng(51.52428520432664,-0.14016151428222656),
+      new google.maps.LatLng(51.52361766963595,-0.14312267303466797),
+      new google.maps.LatLng(51.523777878854176,-0.1448822021484375),
+      new google.maps.LatLng(51.523297249508495,-0.14745712280273438),
+      new google.maps.LatLng(51.52292342317688,-0.14977455139160156),
+      new google.maps.LatLng(51.522683104628875,-0.15230655670166016),
+      new google.maps.LatLng(51.52182862840921,-0.1574993133544922),
+      new google.maps.LatLng(51.52148149286519,-0.15968799591064453),
+      new google.maps.LatLng(51.52068040074146,-0.16402244567871094),
+      new google.maps.LatLng(51.52011962787024,-0.16719818115234375),
+      new google.maps.LatLng(51.5196122559892,-0.16977310180664062),
+      new google.maps.LatLng(51.52019973870316,-0.1705026626586914),
+      new google.maps.LatLng(51.52027984939518,-0.16994476318359375)
+    ];
+
+
+function initialize() {
+  //Create two maps, one on top of the other
+  var myOptions = {
+    zoom: 16,
+    center: London,
+    mapTypeId: google.maps.MapTypeId.ROADMAP
+  };
+  map1 = new google.maps.Map(document.getElementById('map_canvas1'), myOptions);
+  map2 = new google.maps.Map(document.getElementById('map_canvas2'), myOptions);
+
+  //Apply style settings to topmost map
+  map2.set('styles', overlayStyles);
+
+  coordHelper = new CoordinateHelper(map2);
+
+  //instantiating the map seems to override transparent css
+  document.getElementById('map_canvas2').style.background ='transparent';
+
+  //Apply clip region CSS - Firefox & Chrome use different CSS properties
+  document.getElementById("map_canvas2").style.WebkitClipPath = 'url(#route)';
+  document.getElementById("map_canvas2").style.clipPath = 'url(#route)';
+
+  //create and show the Traffic layer
+  traffic = new google.maps.TrafficLayer();
+  traffic.setMap(map2);
+
+  //USe MVCObject binding to link teh state of the two maps
+  map1.bindTo('zoom',map2)
+  map1.bindTo('center',map2)
+
+  //hide the clip shape whilst the map is moved.
+  //Chrome seems to need to reset the -webkit-clip-path CSS property in order to update it
+  //so keeping it visible causes it to show the wrong area for a while.
+  google.maps.event.addListener(map2, 'bounds_changed', function(mEvent) {
+    hideClip();
+    updateSVGPath();
+  });
+
+  //Chrome on Android doesn't hide the clipped map when dragging unless we do it here
+  google.maps.event.addListener(map2, 'dragstart', function(mEvent) {
+    hideClip();
+  });
+
+  //When the user has finished using the map, show the clip again
+  google.maps.event.addListener(map2, 'idle', function(mEvent) {
+    showClip();
+  });
+}
+
+//For Chrome - apply a different clip shape whilst dragging/zooming
+function hideClip(){
+  var mc2 = document.getElementById("map_canvas2").style;
+  mc2.WebkitClipPath = 'url(#Dummy)';
+  mc2.clipPath = 'url(#Dummy)';
+}
+
+
+//For Chrome - re-apply the clip when the map is idle again
+function showClip(){
+  var mc2 = document.getElementById("map_canvas2").style;
+  mc2.WebkitClipPath = 'url(#route)';
+  mc2.clipPath = 'url(#route)';
+}
+
+//recalculate the clip shape based on updated viewport
+function updateSVGPath(){
+  //reference the SVG clip shape
+  var clip = document.getElementById("dynamicPolygon");
+
+  //calculate width & height of map
+  var mapWidth = document.getElementById("map_canvas2").offsetWidth;
+  var mapHeight = document.getElementById("map_canvas2").offsetHeight;
+
+  //array to hold polygon coordinates
+  path = [];
+
+  //convert each lat,long to equivalent pixel position
+  for(var p in polygon){
+    var px = coordHelper.getPixelPosition(polygon[p]);
+
+    //use relative screen units
+    var relativeX = px.x/mapWidth;
+    var relativeY = px.y/mapHeight;
+
+    //add to polygon coordinate array
+    path.push("" + relativeX + "," + relativeY + "");
+  }
+  //update the clip shape with the new coordinates in relative screen units
+  clip.setAttribute("points", path.join(" "));
+}
+
+google.maps.event.addDomListener(window, 'load', initialize);
+
+</script>
+  </head>
+  <body>
+    <div id="map_canvas1"></div>
+    <div id="map_canvas2"></div>
+  </body>
+</html>

@@ -1,0 +1,213 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <!-- Map overlay technique based on Josh Livni's demo of drawing labels on top of a Fusion Tables layer,
+    http://jlivni.github.io/bearded-demos/label_fade_hack.html -->
+    <!-- Read about MVCObject binding, used to keep the two maps in sync:
+    https://developers.google.com/maps/articles/mvcfun -->
+  <title>Clip to GeoJSON</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+  <meta charset="UTF-8">
+  <style type="text/css">
+    html, body{
+      margin: 0;
+      padding: 0;
+      height: 100%;
+    }
+    #map_canvas1, #map_canvas2{
+      height:400px;
+      width:650px;
+      position:absolute;
+      top:0px;
+      left:0px;
+    }
+    #controls{
+      position:absolute;
+      top:10px;
+      left:100px;
+    }
+  </style>
+  <!-- clip regions -->
+  <svg height="0" width="0">
+    <defs>
+      <clipPath id="Dummy">
+        <polygon points="0,0 0,1 1,1 1,0 0,0" />
+      </clipPath>
+      <clipPath id="london" > <!--  clipPathUnits="objectBoundingBox" -->
+        <polygon id="dynamicPolygon" points="0.5,0.5 0.5,0.75 0.75,0.75 0.75,0.5 0.5,0.5"/>
+      </clipPath>
+    </defs>
+  </svg>
+
+  <script type="text/javascript" src="https://maps.googleapis.com/maps/api/js?sensor=false"></script>
+  <script type="text/javascript" src="js/CoordinateHelper.js"></script>
+  <script type="text/javascript">
+    var map1;
+    var map2;
+    var London = new google.maps.LatLng(51.513167, -0.097758);
+    var traffic;
+    var coordHelper;
+
+    var m25 = [
+    new google.maps.LatLng(51.492499698989036,-0.289764404296875),
+    new google.maps.LatLng(51.49933946133651,-0.2918243408203125),
+    new google.maps.LatLng(51.51173391474148,-0.2986907958984375),
+    new google.maps.LatLng(51.525833847122584,-0.2986907958984375),
+    new google.maps.LatLng(51.53309574514964,-0.29937744140625),
+    new google.maps.LatLng(51.54889704878878,-0.2739715576171875),
+    new google.maps.LatLng(51.55658218576253,-0.2602386474609375),
+    new google.maps.LatLng(51.56896106448118,-0.2533721923828125),
+    new google.maps.LatLng(51.5800565046929,-0.2217864990234375),
+    new google.maps.LatLng(51.591575826028006,-0.2121734619140625),
+    new google.maps.LatLng(51.59413527860747,-0.1929473876953125),
+    new google.maps.LatLng(51.61034179610212,-0.163421630859375),
+    new google.maps.LatLng(51.61034179610212,-0.1462554931640625),
+    new google.maps.LatLng(51.62057451128889,-0.1284027099609375),
+    new google.maps.LatLng(51.61844288587238,-0.1153564453125),
+    new google.maps.LatLng(51.6188692189659,-0.0858306884765625),
+    new google.maps.LatLng(51.61759020766987,-0.075531005859375),
+    new google.maps.LatLng(51.6163111603273,-0.0350189208984375),
+    new google.maps.LatLng(51.604798112087416,-0.0144195556640625),
+    new google.maps.LatLng(51.60351870425863,0.0034332275390625),
+    new google.maps.LatLng(51.59840071243278,0.015106201171875),
+    new google.maps.LatLng(51.59797418707659,0.0363922119140625),
+    new google.maps.LatLng(51.57749625888323,0.0494384765625),
+    new google.maps.LatLng(51.5574360097259,0.070037841796875),
+    new google.maps.LatLng(51.54121061341154,0.0734710693359375),
+    new google.maps.LatLng(51.524979430024345,0.0789642333984375),
+    new google.maps.LatLng(51.50404120260676,0.075531005859375),
+    new google.maps.LatLng(51.49164465653034,0.0652313232421875),
+    new google.maps.LatLng(51.46898018751687,0.0597381591796875),
+    new google.maps.LatLng(51.45229536554371,0.0418853759765625),
+    new google.maps.LatLng(51.445020585458344,0.0267791748046875),
+    new google.maps.LatLng(51.44159675846268,-0.0164794921875),
+    new google.maps.LatLng(51.43688857720499,-0.0556182861328125),
+    new google.maps.LatLng(51.4398847487041,-0.0720977783203125),
+    new google.maps.LatLng(51.43731661373785,-0.108489990234375),
+    new google.maps.LatLng(51.44716034698011,-0.1380157470703125),
+    new google.maps.LatLng(51.45742980658965,-0.1613616943359375),
+    new google.maps.LatLng(51.454434786162615,-0.185394287109375),
+    new google.maps.LatLng(51.45357902994656,-0.199127197265625),
+    new google.maps.LatLng(51.45742980658965,-0.2149200439453125),
+    new google.maps.LatLng(51.46299146603759,-0.2410125732421875),
+    new google.maps.LatLng(51.462563670141634,-0.281524658203125),
+    new google.maps.LatLng(51.4826657424533,-0.292510986328125),
+    new google.maps.LatLng(51.49591970845512,-0.292510986328125)
+    ];
+
+    var styles = [{"featureType":"administrative","elementType":"all","stylers":[{"visibility":"off"}]},{"featureType":"poi","elementType":"all","stylers":[{"visibility":"off"}]},{"featureType":"road","elementType":"all","stylers":[{"visibility":"off"}]},{"featureType":"transit","elementType":"all","stylers":[{"visibility":"off"}]},{"featureType":"landscape","elementType":"all","stylers":[{"hue":"#727D82"},{"lightness":-30},{"saturation":-80}]},{"featureType":"water","elementType":"all","stylers":[{"visibility":"simplified"},{"hue":"#F3F4F4"},{"lightness":80},{"saturation":-80}]}];
+
+  function initialize() {
+    var myOptions = {
+      zoom: 14,
+      center: London,
+      /*minZoom:10,
+      maxZoom:10,
+      disableDefaultUI: true,
+      draggable:false,*/
+      mapTypeId: google.maps.MapTypeId.ROADMAP,
+      styles: styles
+    };
+    map1 = new google.maps.Map(document.getElementById('map_canvas1'), myOptions);
+    map2 = new google.maps.Map(document.getElementById('map_canvas2'), myOptions);
+
+    map2.data.loadGeoJson('js/london.geojson');
+    map2.data.setStyle({ strokeColor: 'green', fillOpacity: 0.0 });
+
+
+    var canv = document.getElementById('map_canvas2');
+
+    //instantiating the map seems to override transparent css
+    canv.style.background ='transparent';
+
+    //Bind the state of the two maps together
+    map1.bindTo('center',map2);
+    map1.bindTo('zoom', map2);
+
+    coordHelper = new CoordinateHelper(map2);
+
+    //hide the clip shape whilst the map is moved.
+    //Chrome seems to need to reset the -webkit-clip-path CSS property in order to update it
+    //so keeping it visible causes it to show the wrong area for a while.
+    google.maps.event.addListener(map2, 'bounds_changed', function(mEvent) {
+      hideClip();
+
+    });
+
+    //Chrome on Android doesn't hide the clipped map when dragging unless we do it here
+    google.maps.event.addListener(map2, 'dragstart', function(mEvent) {
+      hideClip();
+    });
+
+    //When the user has finished using the map, show the clip again
+    google.maps.event.addListener(map2, 'idle', function(mEvent) {
+      fromGeoJson();
+      showClip();
+    });
+
+    //create and show the traffic layer
+    traffic = new google.maps.TrafficLayer();
+    traffic.setMap(map2);
+
+  }
+
+  //For Chrome - apply a different clip shape whilst dragging/zooming
+  function hideClip(){
+    var mc2 = document.getElementById("map_canvas2").style;
+    mc2.WebkitClipPath = 'url(#Dummy)';
+    mc2.clipPath = 'url(#Dummy)';
+  }
+
+
+  //For Chrome - re-apply the clip when the map is idle again
+  function showClip(){
+    var mc2 = document.getElementById("map_canvas2").style;
+    mc2.WebkitClipPath = 'url(#london)';
+    mc2.clipPath = 'url(#london)';
+  }
+
+  //recalculate the clip shape based on updated viewport
+  function fromGeoJson(){
+    map2.data.forEach(function(feature){
+      var geom = feature.getGeometry();
+      if(geom.getType()==="Polygon"){
+        var pts = geom.getAt(0).getArray();
+        console.log(pts);
+        //reference the SVG clip shape
+        var clip = document.getElementById("dynamicPolygon");
+
+        //calculate width & height of map
+        var mapWidth = document.getElementById("map_canvas2").offsetWidth;
+        var mapHeight = document.getElementById("map_canvas2").offsetHeight;
+
+        //array to hold polygon coordinates
+        path = [];
+
+        //convert each lat,long to equivalent pixel position
+        for(var p in pts){
+          var px = coordHelper.getPixelPosition(pts[p]);
+
+          //use relative screen units
+          var relativeX = px.x/mapWidth;
+          var relativeY = px.y/mapHeight;
+
+          //add to polygon coordinate array
+          path.push("" + px.x + "," + px.y + "");
+        }
+        //update the clip shape with the new coordinates in relative screen units
+        clip.setAttribute("points", path.join(" "));
+        document.getElementById("map_canvas2").style.clipPath = "url(#london)";
+        document.getElementById("map_canvas2").style.WebkitClipPath = "url(#london)";
+      }
+    });
+  }
+
+  google.maps.event.addDomListener(window, 'load', initialize);
+
+</script>
+  </head>
+  <body>
+    <div id="map_canvas1"></div>
+    <div id="map_canvas2"></div>
+  </body>
+</html>

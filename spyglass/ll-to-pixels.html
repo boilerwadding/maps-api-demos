@@ -1,0 +1,156 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>Showing pixel and tile coordinates</title>
+  <meta name="viewport" content="initial-scale=1.0, user-scalable=no">
+  <meta charset="utf-8">
+  <style>
+  html, body, #map-canvas {
+    height: 100%;
+    margin: 0px;
+    padding: 0px
+  }
+  #console{
+    font-family: 'Courier New, Lucida Console';
+    position: absolute;
+    top:120px;
+    right:20px;
+    max-height:90%;
+    min-height:100px;
+    width:300px;
+    background-color:white;
+    overflow:auto;
+  }
+  </style>
+  <script src="https://maps.googleapis.com/maps/api/js?v=3.exp&signed_in=true"></script>
+  <script>
+  /* cribbed from http://gmaps-samples-v3.googlecode.com/svn/trunk/latlng-to-coord-control/latlng-to-coord-control.html */
+  /**
+  * LatLngControl class displays the LatLng and pixel coordinates
+  * underneath the mouse within a container anchored to it.
+  * @param {google.maps.Map} map Map to add custom control to.
+  */
+  function LatLngControl(map) {
+    /**
+    * Offset the control container from the mouse by this amount.
+    */
+    this.ANCHOR_OFFSET_ = new google.maps.Point(8, 8);
+
+    /**
+    * Pointer to the HTML container.
+    */
+    this.node_ = this.createHtmlNode_();
+
+    // Add control to the map. Position is irrelevant.
+    map.controls[google.maps.ControlPosition.TOP].push(this.node_);
+
+    // Bind this OverlayView to the map so we can access MapCanvasProjection
+    // to convert LatLng to Point coordinates.
+    this.setMap(map);
+
+    // Register an MVC property to indicate whether this custom control
+    // is visible or hidden. Initially hide control until mouse is over map.
+    this.set('visible', false);
+  }
+
+  // Extend OverlayView so we can access MapCanvasProjection.
+  LatLngControl.prototype = new google.maps.OverlayView();
+  LatLngControl.prototype.draw = function() {};
+
+  /**
+  * @private
+  * Helper function creates the HTML node which is the control container.
+  * @return {HTMLDivElement}
+  */
+  LatLngControl.prototype.createHtmlNode_ = function() {
+    var divNode = document.createElement('div');
+    divNode.id = 'latlng-control';
+    divNode.index = 100;
+    return divNode;
+  };
+
+  /**
+  * MVC property's state change handler function to show/hide the
+  * control container.
+  */
+  LatLngControl.prototype.visible_changed = function() {
+    this.node_.style.display = this.get('visible') ? '' : 'none';
+  };
+
+  /**
+  * Specified LatLng value is used to calculate pixel coordinates and
+  * update the control display. Container is also repositioned.
+  * @param {google.maps.LatLng} latLng Position to display
+  */
+  LatLngControl.prototype.updatePosition = function(latLng) {
+    var projection = this.getProjection();
+    var point = projection.fromLatLngToContainerPixel(latLng);
+
+    // Update control position to be anchored next to mouse position.
+    this.node_.style.left = point.x + this.ANCHOR_OFFSET_.x + 'px';
+    this.node_.style.top = point.y + this.ANCHOR_OFFSET_.y + 'px';
+
+    // Update control to display latlng and coordinates.
+    this.node_.innerHTML = [
+    latLng.toUrlValue(4),
+    '<br/>',
+    point.x,
+    'px, ',
+    point.y,
+    'px'
+    ].join('');
+  };
+
+  /* take a lat,long and just return the pixel position in the current view */
+  LatLngControl.prototype.getPixelPosition = function(latLng) {
+    var projection = map.getProjection(); //this.getProjection();
+    var point = projection.fromLatLngToPoint(latLng); //fromLatLngToContainerPixel(latLng);
+
+    return point;
+  };
+
+      var latLngControl;
+      var London = new google.maps.LatLng(51.52668090062261, -0.13671407699586524);
+      var map;
+
+      function initialize() {
+        map = new google.maps.Map(document.getElementById('map-canvas'), {
+          'zoom': 10,
+          'center': London,
+          'mapTypeId': google.maps.MapTypeId.ROADMAP
+        });
+
+        // Create new control to display latlng and coordinates under mouse.
+        latLngControl = new LatLngControl(map);
+
+        // Register event listeners
+        google.maps.event.addListener(map, 'mouseover', function(mEvent) {
+          latLngControl.set('visible', true);
+          document.getElementById("map-canvas").style.cursor = 'pointer';
+        });
+        google.maps.event.addListener(map, 'mouseout', function(mEvent) {
+          latLngControl.set('visible', false);
+        });
+        google.maps.event.addListener(map, 'mousemove', function(mEvent) {
+          latLngControl.updatePosition(mEvent.latLng);
+        });
+        google.maps.event.addListener(map, 'click', function(mEvent) {
+          var pt = mEvent.latLng;
+          var px = mEvent.pixel;
+
+          var cnsl = document.getElementById("console");
+          //cnsl.innerText += px.x + ' ' + px.y + ',\n';
+          cnsl.innerText += 'new google.maps.LatLng(' +pt.lat() + ',' + pt.lng() + "),\n";
+          console.log("zoom: " + map.getZoom() + ", centre: " + map.getCenter().toString());
+        });
+      }
+
+      google.maps.event.addDomListener(window, 'load', initialize);
+
+    </script>
+  </head>
+  <body>
+    <div id="map-canvas"></div>
+    <div id="console"></div>
+  </body>
+  </html>
