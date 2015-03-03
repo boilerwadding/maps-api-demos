@@ -1,9 +1,11 @@
 <!DOCTYPE html>
 <html>
   <head>
-    <!-- Based on Josh Livni's demo of drawing labels on top of a Fusion Tables layer,
-    http://jlivni.github.io/bearded-demos/label_fade_hack.html-->
-  <title>Spyglass map inset demo</title>
+    <!-- Map overlay technique based on Josh Livni's demo of drawing labels on top of a Fusion Tables layer,
+    http://jlivni.github.io/bearded-demos/label_fade_hack.html -->
+    <!-- Read about MVCObject binding, used to keep the two maps in sync:
+    https://developers.google.com/maps/articles/mvcfun -->
+  <title>Map spyglass demo</title>
   <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
   <meta charset="UTF-8">
   <style type="text/css">
@@ -39,7 +41,7 @@
     var map2;
     var London = new google.maps.LatLng(51.52637385203631, -0.12493381500245704);
     var traffic;
-    var radius = 200;
+    var radius = 150;
     var baseStyles = [
       {
         elementType: "labels",
@@ -81,15 +83,37 @@
     map1.set('styles', baseStyles);
     map2.set('styles', overlayStyles);
 
-    //instantiating the map seems to override transparent css
-    document.getElementById('map_canvas2').style.background ='transparent';
+    var canv = document.getElementById('map_canvas2');
 
+    //instantiating the map seems to override transparent css
+    canv.style.background ='transparent';
+
+    //Bind the state of the two maps together
+    map1.bindTo('center',map2);
+    map1.bindTo('zoom', map2);
+
+    //work out the pixel position of the map center
+    var canvasWidth = canv.offsetWidth;
+    var canvasHeight = canv.offsetHeight;
+    var centerPx = canvasWidth/2;
+    var centerPy = canvasHeight/2;
+
+    //Clip shape - Chrome
+    var clipPath = "circle(" + radius + "px at " + centerPx + "px " + centerPy + "px)";
+    document.getElementById("map_canvas2").style.WebkitClipPath = clipPath;
+
+    //Clip shape - Firefox needs url() syntax for SVG shape
+    var ffClipPath = "url(#svgPath)";
+    var c = document.getElementById("circle");
+    c.cx.baseVal.value = centerPx;
+    c.cy.baseVal.value = centerPy;
+    document.getElementById("map_canvas2").style.clipPath = ffClipPath;
+
+    //create and show the traffic layer
     traffic = new google.maps.TrafficLayer();
     traffic.setMap(map2);
 
-    map1.bindTo('zoom',map2)
-    map1.bindTo('center',map2)
-
+    //Mouse/touch events to change the position of the spyglass
     google.maps.event.addListener(map2, 'mousemove', function(event) {
       updateClip(event.pixel);
     });
@@ -105,15 +129,15 @@
     var clipPath = "circle(" + radius + "px at " + pixel.x + "px " + pixel.y + "px)";
     document.getElementById("map_canvas2").style.WebkitClipPath = clipPath;
 
-    //firefox doesn't support "circle(radius at centerx centery) syntax"
+    //firefox doesn't support "circle(radius at centerx centery)" syntax
     var ffClipPath = "url(#svgPath)";
     var c = document.getElementById("circle");
     c.cx.baseVal.value = pixel.x;
     c.cy.baseVal.value = pixel.y;
     document.getElementById("map_canvas2").style.clipPath = ffClipPath;
-    //document.getElementById("map_canvas2").style.WebkitClipPath = ffClipPath;
   }
 
+  //change what is shown in the spyglass.
   function setOverlay(){
     var sel = document.getElementById("overlay");
     var val = sel.options[sel.selectedIndex].value;
@@ -142,16 +166,14 @@
 </script>
   </head>
   <body>
-
     <div id="map_canvas1"></div>
-    <div id="map_canvas2">
-    </div>
+    <div id="map_canvas2"></div>
     <div id="controls">
       <select id="overlay" onchange="setOverlay()">
         <option value="traffic" selected>Traffic</option>
         <option value="HYBRID">Satellite</option>
         <option value="TERRAIN">Terrain</option>
-        <option value="ROADMAP">Labels</option>
+        <option value="LABELS">Labels</option>
       </select>
     </div>
   </body>

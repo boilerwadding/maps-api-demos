@@ -1,9 +1,13 @@
 <!DOCTYPE html>
 <html>
   <head>
-<!-- Map overlay based on Josh Livni's demo of drawing labels on top of a Fusion Tables layer,
-http://jlivni.github.io/bearded-demos/label_fade_hack.html-->
-  <title>Map overlay clipping demo</title>
+    <!-- Map overlay technique based on Josh Livni's demo of drawing labels on top of a Fusion Tables layer,
+    http://jlivni.github.io/bearded-demos/label_fade_hack.html -->
+    <!-- Read about MVCObject binding, used to keep the two maps in sync:
+    https://developers.google.com/maps/articles/mvcfun -->
+    <!-- Lat,Lng to Pixel conversion uses Google Maps API sample code from
+    http://gmaps-samples-v3.googlecode.com/svn/trunk/latlng-to-coord-control/latlng-to-coord-control.html -->
+  <title>Clip traffic to a route</title>
   <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
   <meta charset="UTF-8">
   <style type="text/css">
@@ -19,11 +23,6 @@ http://jlivni.github.io/bearded-demos/label_fade_hack.html-->
       top:0px;
       left:0px;
     }
-    #map_canvas2{
-
-      -webkit-clip-path: "url(#route)"; //chrome, safari
-      clip-path: "url(#route)"; //firefox
-    }
     #controls{
       position:absolute;
       top:10px;
@@ -33,7 +32,6 @@ http://jlivni.github.io/bearded-demos/label_fade_hack.html-->
   </style>
   <!-- clip regions -->
   <svg height="0" width="0">
-
     <defs>
       <clipPath id="Dummy">
         <polygon points="0,0 0,1 1,1 1,0 0,0" />
@@ -41,9 +39,7 @@ http://jlivni.github.io/bearded-demos/label_fade_hack.html-->
       <clipPath id="route"  clipPathUnits="objectBoundingBox">
         <polygon id="dynamicPolygon" points="0.5,0.5 0.5,0.75 0.75,0.75 0.75,0.5 0.5,0.5"/>
       </clipPath>
-
     </defs>
-
   </svg>
 
   <script type="text/javascript" src="https://maps.googleapis.com/maps/api/js?&sensor=false"></script>
@@ -56,14 +52,6 @@ http://jlivni.github.io/bearded-demos/label_fade_hack.html-->
   var path = [];
   var coordHelper;
 
-  var baseStyles = [
-    {
-      elementType: "labels",
-      stylers: [
-    { visibility: "off" }
-        ]
-    }
-  ];
   var overlayStyles = [
       {
         elementType: "labels",
@@ -91,6 +79,7 @@ http://jlivni.github.io/bearded-demos/label_fade_hack.html-->
       }
     ];
 
+    //shape that defines the region of overlay map to show
     var polygon = [
       new google.maps.LatLng(51.52027984939518,-0.16994476318359375),
       new google.maps.LatLng(51.520493477218274,-0.1684427261352539),
@@ -131,6 +120,7 @@ http://jlivni.github.io/bearded-demos/label_fade_hack.html-->
 
 
 function initialize() {
+  //Create two maps, one on top of the other
   var myOptions = {
     zoom: 16,
     center: London,
@@ -139,83 +129,85 @@ function initialize() {
   map1 = new google.maps.Map(document.getElementById('map_canvas1'), myOptions);
   map2 = new google.maps.Map(document.getElementById('map_canvas2'), myOptions);
 
-  //map1.set('styles', baseStyles);
+  //Apply style settings to topmost map
   map2.set('styles', overlayStyles);
 
   coordHelper = new CoordinateHelper(map2);
 
   //instantiating the map seems to override transparent css
   document.getElementById('map_canvas2').style.background ='transparent';
+
+  //Apply clip region CSS - Firefox & Chrome use different CSS properties
   document.getElementById("map_canvas2").style.WebkitClipPath = 'url(#route)';
   document.getElementById("map_canvas2").style.clipPath = 'url(#route)';
 
+  //create and show the Traffic layer
   traffic = new google.maps.TrafficLayer();
   traffic.setMap(map2);
 
+  //USe MVCObject binding to link teh state of the two maps
   map1.bindTo('zoom',map2)
   map1.bindTo('center',map2)
 
-  google.maps.event.addListener(map2, 'zoom_changed', function(mEvent) {
-    hideClip();
-    updateSVGPath();
-    showClip();
-    //console.log("zoom_changed");
-  });
+  //hide the clip shape whilst the map is moved.
+  //Chrome seems to need to reset the -webkit-clip-path CSS property in order to update it
+  //so keeping it visible causes it to show the wrong area for a while.
   google.maps.event.addListener(map2, 'bounds_changed', function(mEvent) {
-    //hideClip();
+    hideClip();
     updateSVGPath();
-    showClip();
-    //console.log("bounds changed");
   });
-  google.maps.event.addListener(map2, 'center_changed', function(mEvent) {
-    hideClip();
-    //console.log("center changed")
-  });
-  google.maps.event.addListener(map2, 'dragstart', function(mEvent) {
-    //hide overlay whilst dragging
-    hideClip();
-  });
-  google.maps.event.addListener(map2, 'dragend', function(mEvent) {
-    //show overlay
 
-    updateSVGPath()
+  //Chrome on Android doesn't hide the clipped map when dragging unless we do it here
+  google.maps.event.addListener(map2, 'dragstart', function(mEvent) {
+    hideClip();
+  });
+
+  //When the user has finished using the map, show the clip again
+  google.maps.event.addListener(map2, 'idle', function(mEvent) {
     showClip();
   });
 }
 
+//For Chrome - apply a different clip shape whilst dragging/zooming
 function hideClip(){
   var mc2 = document.getElementById("map_canvas2").style;
   mc2.WebkitClipPath = 'url(#Dummy)';
-  mc2.MozClipPath = 'url(#Dummy)';
-  mc2.OClipPath = 'url(#Dummy)';
   mc2.clipPath = 'url(#Dummy)';
 }
 
+
+//For Chrome - re-apply the clip when the map is idle again
 function showClip(){
   var mc2 = document.getElementById("map_canvas2").style;
   mc2.WebkitClipPath = 'url(#route)';
-  mc2.MozClipPath = 'url(#route)';
-  mc2.OClipPath = 'url(#route)';
   mc2.clipPath = 'url(#route)';
 }
 
-
+//recalculate the clip shape based on updated viewport
 function updateSVGPath(){
+  //reference the SVG clip shape
   var clip = document.getElementById("dynamicPolygon");
+
+  //calculate width & height of map
   var mapWidth = document.getElementById("map_canvas2").offsetWidth;
   var mapHeight = document.getElementById("map_canvas2").offsetHeight;
+
+  //array to hold polygon coordinates
   path = [];
+
+  //convert each lat,long to equivalent pixel position
   for(var p in polygon){
     var px = coordHelper.getPixelPosition(polygon[p]);
+
+    //use relative screen units
     var relativeX = px.x/mapWidth;
     var relativeY = px.y/mapHeight;
+
+    //add to polygon coordinate array
     path.push("" + relativeX + "," + relativeY + "");
   }
-  var polygonSVG = path.join(" ");
-  clip.setAttribute("points", polygonSVG);
-
-  //document.getElementById("map_canvas2").style.WebkitClipPath = 'url(#route)';
-
+  //update the clip shape with the new coordinates in relative screen units
+  clip.setAttribute("points", path.join(" "));
 }
 
 google.maps.event.addDomListener(window, 'load', initialize);
@@ -223,7 +215,6 @@ google.maps.event.addDomListener(window, 'load', initialize);
 </script>
   </head>
   <body>
-
     <div id="map_canvas1"></div>
     <div id="map_canvas2"></div>
   </body>

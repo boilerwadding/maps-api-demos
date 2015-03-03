@@ -1,11 +1,12 @@
 <!DOCTYPE html>
 <html>
   <head>
-<!-- Based on Josh Livni's demo of drawing labels on top of a Fusion Tables layer,
-http://jlivni.github.io/bearded-demos/label_fade_hack.html-->
-  <title>Magnifier map inset demo</title>
-  <meta name="viewport"
-      content="width=device-width, initial-scale=1.0, user-scalable=no">
+    <!-- Map overlay technique based on Josh Livni's demo of drawing labels on top of a Fusion Tables layer,
+    http://jlivni.github.io/bearded-demos/label_fade_hack.html -->
+    <!-- Read about MVCObject binding, used to keep the two maps in sync:
+    https://developers.google.com/maps/articles/mvcfun -->
+  <title>Map spyglass demo</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
   <meta charset="UTF-8">
   <style type="text/css">
     html, body{
@@ -20,15 +21,6 @@ http://jlivni.github.io/bearded-demos/label_fade_hack.html-->
       top:0px;
       left:0px;
     }
-    #map_canvas2{
-      clip-path: "url(#svgPath)"; //chrome, safari, opera
-      -webkit-clip-path: "circle(200px at center)"; //firefox
-    }
-    #controls{
-      position:absolute;
-      top:10px;
-      left:100px;
-    }
 
   </style>
   <!-- clip region for Firefox -->
@@ -40,8 +32,7 @@ http://jlivni.github.io/bearded-demos/label_fade_hack.html-->
     </defs>
   </svg>
 
-  <script type="text/javascript"
-      src="https://maps.googleapis.com/maps/api/js?&sensor=false"></script>
+  <script type="text/javascript" src="https://maps.googleapis.com/maps/api/js?&sensor=false"></script>
   <script type="text/javascript">
     var map1;
     var map2;
@@ -49,37 +40,38 @@ http://jlivni.github.io/bearded-demos/label_fade_hack.html-->
     var radius = 150;
 
   function initialize() {
-
+    //create two maps, one on top of the other
     var myOptions = {
       zoom: 15,
       center: London,
       mapTypeId: google.maps.MapTypeId.ROADMAP
     };
-    var myOptions2 = {
-      zoom: 16,
-      center: London,
-      mapTypeId: google.maps.MapTypeId.HYBRID
-    };
     map1 = new google.maps.Map(document.getElementById('map_canvas1'), myOptions);
-    map2 = new google.maps.Map(document.getElementById('map_canvas2'), myOptions2);
+
+    //this is the topmost map. Change the map type.
+    myOptions.mapTypeId = google.maps.MapTypeId.HYBRID;
+    map2 = new google.maps.Map(document.getElementById('map_canvas2'), myOptions);
 
     var canv = document.getElementById('map_canvas2');
 
     //instantiating the map seems to override transparent css
     canv.style.background ='transparent';
 
+    //bind the state of the two maps together so they both update
     map1.bindTo('center',map2);
     map1.bindTo('zoom', map2);
 
+    //work out the initial position of the spyglass
     var canvasWidth = canv.offsetWidth;
     var canvasHeight = canv.offsetHeight;
     var centerPx = canvasWidth/2;
     var centerPy = canvasHeight/2;
 
+    //Chrome clip definition
     var clipPath = "circle(" + radius + "px at " + centerPx + "px " + centerPy + "px)";
     document.getElementById("map_canvas2").style.WebkitClipPath = clipPath;
 
-    //firefox
+    //Firefox needs url() syntax for SVG shape
     var ffClipPath = "url(#svgPath)";
     var c = document.getElementById("circle");
     c.cx.baseVal.value = centerPx;
@@ -93,7 +85,6 @@ http://jlivni.github.io/bearded-demos/label_fade_hack.html-->
 </script>
   </head>
   <body>
-
     <div id="map_canvas1"></div>
     <div id="map_canvas2"></div>
   </body>
