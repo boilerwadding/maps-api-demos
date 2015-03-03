@@ -1,11 +1,14 @@
 <!DOCTYPE html>
 <html>
   <head>
-<!-- Map overlay based on Josh Livni's demo of drawing labels on top of a Fusion Tables layer,
-http://jlivni.github.io/bearded-demos/label_fade_hack.html-->
+    <!-- Map overlay technique based on Josh Livni's demo of drawing labels on top of a Fusion Tables layer,
+    http://jlivni.github.io/bearded-demos/label_fade_hack.html -->
+    <!-- Read about MVCObject binding, used to keep the two maps in sync:
+    https://developers.google.com/maps/articles/mvcfun -->
+    <!-- Lat,Lng to Pixel conversion uses Google Maps API sample code from
+    http://gmaps-samples-v3.googlecode.com/svn/trunk/latlng-to-coord-control/latlng-to-coord-control.html -->
   <title>Map overlay clipping demo</title>
-  <meta name="viewport"
-      content="width=device-width, initial-scale=1.0, user-scalable=no">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
   <meta charset="UTF-8">
   <style type="text/css">
     html, body{
@@ -19,11 +22,6 @@ http://jlivni.github.io/bearded-demos/label_fade_hack.html-->
       position:absolute;
       top:0px;
       left:0px;
-    }
-    #map_canvas2{
-
-      -webkit-clip-path: "url(#parks)"; //chrome, safari
-      clip-path: "url(#parks)"; //firefox
     }
     #controls{
       position:absolute;
@@ -125,7 +123,7 @@ http://jlivni.github.io/bearded-demos/label_fade_hack.html-->
 
 function initialize() {
   var myOptions = {
-    zoom: 14,
+    zoom: 13,
     center: London,
     mapTypeId: google.maps.MapTypeId.ROADMAP,
     mapTypeControl: true,
@@ -142,6 +140,7 @@ function initialize() {
   myOptions.mapTypeId = google.maps.MapTypeId.HYBRID;
   map2 = new google.maps.Map(document.getElementById('map_canvas2'), myOptions);
 
+  //use a helper object to do lat,long to pixel conversions
   coordHelper = new CoordinateHelper(map2);
 
   //instantiating the map seems to override transparent css
@@ -151,17 +150,21 @@ function initialize() {
   document.getElementById("map_canvas2").style.WebkitClipPath = 'url(#parks)';
   document.getElementById("map_canvas2").style.clipPath = 'url(#parks)';
 
-  //use MVCObject binding to keep the two maps
+  //use MVCObject binding to keep the two maps in sync
   map1.bindTo('zoom',map2)
   map1.bindTo('center',map2)
 
   //hide the clip shape whilst the map is moved.
   //Chrome seems to need to reset the -webkit-clip-path CSS property in order to update it
-  //so keeing it visible causes it to show the wrong area for a while.
-
+  //so keeping it visible causes it to show the wrong area for a while.
   google.maps.event.addListener(map2, 'bounds_changed', function(mEvent) {
     hideClip();
     updateSVGPath();
+  });
+
+  //Chrome on Android doesn't hid the clipped map when dragging
+  google.maps.event.addListener(map2, 'dragstart', function(mEvent) {
+    hideClip();
   });
 
   //When the user has finished using the map, show the clip again
@@ -185,10 +188,15 @@ function showClip(){
 
 //recalculate the clip in image coordinates and update the SVG shape
 function updateSVGPath(){
+  //get reference to the SVG clip shapes
   var clip = document.getElementById("regentsPark");
   var clip2 = document.getElementById("hydePark");
+
+  //Work out map width & height in screen units
   var mapWidth = document.getElementById("map_canvas2").offsetWidth;
   var mapHeight = document.getElementById("map_canvas2").offsetHeight;
+
+  //Convert lat,longs of clip polygons to relative screen units
   path = [];
   for(var p in regentsPark){
     var px = coordHelper.getPixelPosition(regentsPark[p]);
@@ -197,6 +205,8 @@ function updateSVGPath(){
     path.push("" + relativeX + "," + relativeY + "");
   }
   clip.setAttribute("points", path.join(" "));
+
+  //reset and do it again for Hyde Park
   path = [];
   for(var h in hydePark){
     var px = coordHelper.getPixelPosition(hydePark[h]);

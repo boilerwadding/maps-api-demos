@@ -1,3 +1,6 @@
+/* Lat,Lng to Pixel conversion uses Google Maps API sample code from
+*  http://gmaps-samples-v3.googlecode.com/svn/trunk/latlng-to-coord-control/latlng-to-coord-control.html 
+*/
 function CoordinateHelper(map) {
   /**
   * Offset the control container from the mouse by this amount.
