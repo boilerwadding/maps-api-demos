@@ -8,7 +8,7 @@
 //used to stop animation of layers once started
 var animate = false;
 
-//reference teh currently visible overlay
+//reference the currently visible overlay
 var currentLayer = 0;
 
 //global to allow me to inspect the MetOffice data object :-/
@@ -26,6 +26,8 @@ var layerOpacity = 0.8;
 //global to store reference to timeout.
 var cycleTimeout = null;
 
+var map;
+
 var Geo = {
     map: null,
     mdl: null,
@@ -42,22 +44,98 @@ var Geo = {
              myOptions);
     }
 };
+window.datapointCallback = function(data){
+  moData = data;
+  parseMoData();
+};
 
+function init(){
 
-function getMoData(){
-  $.ajax({
-    url: 'https://boilerwadding.appspot.com/',
-    dataType: "jsonp",
-    success: loadMoData,
-    error: moDataError
-  });
+  initMap();
+  getData();
+  //getMoData();
+
+  //$("#addLightning").bind('click', animateLightning);
+  addListener("addLightning", animateLightning);
+
+  //$("#addRainfall").bind('click', animateRainfall);
+  addListener("addRainfall", animateRainfall);
+
+  //$("#addSatelliteIR").bind('click', animateIR);
+  addListener("addSatelliteIR", animateIR);
+
+  //$("#addSatelliteVis").bind('click', animateSat);
+  addListener("addSatelliteVis", animateSat);
+
+  //$("#stopRainfall").bind('click', function(){animate=false;});
+  addListener("stopRainfall", function(){animate=false;});
+
+  //$("#clearMap").bind('click', clearLayers);
+  addListener("clearMap", clearLayers);
 }
 
+function initMap(){
+  var myLatlng = new google.maps.LatLng(55.5,-1.582667);
+  var myOptions = {
+    zoom: 6,
+    center: myLatlng,
+    mapTypeId: google.maps.MapTypeId.TERRAIN
+  };
+  map = new google.maps.Map(document.getElementById("map_canvas"), myOptions);
+}
+
+function getData(){
+  var scriptElement = document.createElement("script");
+  scriptElement.setAttribute("type", "text/javascript");
+  scriptElement.setAttribute("src", "https://boilerwadding.appspot.com/?callback=datapointCallback");
+  document.body.appendChild(scriptElement);
+}
+
+// function getMoData(){
+//   $.ajax({
+//     url: 'https://boilerwadding.appspot.com/',
+//     dataType: "jsonp",
+//     success: loadMoData,
+//     error: moDataError
+//   });
+// }
+
 function loadMoData(response){
-  $("#message").html('Met Office data loaded.');
+  //$("#message").html('Met Office data loaded.');
   console.log("Met Office data loaded.");
   moData = response;
   parseMoData();
+}
+
+function parseMoData(){
+  var olIndex = 0;
+  var baseUrl = moData.Layers.BaseUrl.$
+  for(var l = 0;l< moData.Layers.Layer.length;l++){
+    var layer = moData.Layers.Layer[l];
+    var displayName = layer["@displayName"]; //.toUpperCase();
+    var service = layer.Service;
+    var times = service.Times.Time;
+    var opts = null;
+
+    for(var t = 0;t<times.length;t++){
+      opts = getMoMapOptions(service["@name"], service.LayerName, times[t], layer["@displayName"] + "_" + t);
+
+      overlayMaps[olIndex] = times[t];
+
+      //store lookup between layer type and overlay indices
+      //each layer type has multiple timestamped versions
+      if(mapLayers[displayName]==null){
+        mapLayers[displayName] = [olIndex];
+      } else {
+        mapLayers[displayName].push(olIndex);
+      }
+      //this causes 44 layers to each request tiles for the current map extent.
+      //TO DO - refactor to store ImageMapType objects until needed.
+      map.overlayMapTypes.insertAt(olIndex, new google.maps.ImageMapType(opts));
+      olIndex++;
+    }
+
+  }
 }
 
 function moDataError(){
@@ -92,8 +170,8 @@ function animateIR(){
   clearTimeout(cycleTimeout);
   animate=false;
   clearLayers();
-  if(Geo.map.getZoom()>7){
-    Geo.map.setZoom(7);
+  if(map.getZoom()>7){
+    map.setZoom(7);
   }
   setStyle("justplaces");
   layerOpacity = 0.5;
@@ -106,8 +184,8 @@ function animateSat(){
   clearTimeout(cycleTimeout);
   animate=false;
   clearLayers();
-  if(Geo.map.getZoom()>7){
-    Geo.map.setZoom(7);
+  if(map.getZoom()>7){
+    map.setZoom(7);
   }
   setStyle("justplaces");
   currentLayer = 0;
@@ -131,34 +209,7 @@ function cycleLayers(name){
   }
 }
 
-function parseMoData(){
-  var olIndex = 0;
-  var baseUrl = moData.Layers.BaseUrl.$
-  for(var l = 0;l< moData.Layers.Layer.length;l++){
-    var layer = moData.Layers.Layer[l];
-    var displayName = layer["@displayName"]; //.toUpperCase();
-    var service = layer.Service;
-    var times = service.Times.Time;
-    var opts = null;
 
-    for(var t = 0;t<times.length;t++){
-      opts = getMoMapOptions(service["@name"], service.LayerName, times[t], layer["@displayName"] + "_" + t);
-
-      overlayMaps[olIndex] = times[t];
-
-      //store lookup between layer type and overlay indices
-      //each layer type has multiple timestamped versions
-      if(mapLayers[displayName]==null){
-        mapLayers[displayName] = [olIndex];
-      } else {
-        mapLayers[displayName].push(olIndex);
-      }
-      Geo.map.overlayMapTypes.insertAt(olIndex, new google.maps.ImageMapType(opts));
-      olIndex++;
-    }
-
-  }
-}
 
 
 function getMoMapOptions(service, layer, timestamp, name){
@@ -177,8 +228,8 @@ function getMoMapOptions(service, layer, timestamp, name){
 }
 
 function clearLayers(){
-  for (var i = 0; i < Geo.map.overlayMapTypes.getLength(); i++){
-    Geo.map.overlayMapTypes.getAt(i).setOpacity(0);
+  for (var i = 0; i < map.overlayMapTypes.getLength(); i++){
+    map.overlayMapTypes.getAt(i).setOpacity(0);
   }
 }
 
@@ -186,7 +237,7 @@ function showLayer(index){
   console.log('Showing layer ' + index);
   clearLayers();
   setTimestamp(index);
-  var olm = Geo.map.overlayMapTypes.getAt(index);
+  var olm = map.overlayMapTypes.getAt(index);
   if(olm!=null){
     olm.setOpacity(layerOpacity);
   }
@@ -199,7 +250,7 @@ function setTimestamp(index){
     var tempTime = timestamp.split("T");
     timeText = "Date: " + tempTime[0] + ", time: " + tempTime[1];
   }
-  $("#timestamp").html(timeText);
+  document.getElementById("timestamp").innerHTML = timeText;
 }
 
 
@@ -215,22 +266,19 @@ function setStyle(styleName){
     case "justplaces":
       styleToUse = justPlaces;
   }
-  Geo.map.setOptions({ styles: styleToUse });
+  map.setOptions({ styles: styleToUse });
+}
+
+function addListener(elementId, func){
+  //IE9+
+  document.getElementById(elementId).addEventListener('click', func);
 }
 
 
-$(document).ready(function(){
-    Geo.initialise();
-    getMoData();
+google.maps.event.addDomListener(window, 'load', init);
 
-    $("#addLightning").bind('click', animateLightning);
-    $("#addRainfall").bind('click', animateRainfall);
-    $("#addSatelliteIR").bind('click', animateIR);
-    $("#addSatelliteVis").bind('click', animateSat);
-    $("#stopRainfall").bind('click', function(){animate=false;});
-    $("#clearMap").bind('click', clearLayers);
 
-});
+//});
 
 //http://snazzymaps.com/style/106/dark-grey-on-light-grey
 var lightGreyStyle = [{"featureType":"administrative","elementType":"labels","stylers":[{"visibility":"off"}]},{"featureType":"administrative.country","elementType":"geometry.stroke","stylers":[{"color":"#DCE7EB"}]},{"featureType":"administrative.province","elementType":"geometry.stroke","stylers":[{"color":"#DCE7EB"}]},{"featureType":"landscape","elementType":"geometry","stylers":[{"visibility":"off"}]},{"featureType":"landscape.natural","elementType":"labels","stylers":[{"visibility":"off"}]},{"featureType":"poi","elementType":"all","stylers":[{"visibility":"off"}]},{"featureType":"road","elementType":"all","stylers":[{"visibility":"off"}]},{"featureType":"road","elementType":"labels","stylers":[{"visibility":"off"}]},{"featureType":"transit","elementType":"labels.icon","stylers":[{"visibility":"off"}]},{"featureType":"transit.line","elementType":"geometry","stylers":[{"visibility":"off"}]},{"featureType":"transit.line","elementType":"labels.text","stylers":[{"visibility":"off"}]},{"featureType":"transit.station.airport","elementType":"geometry","stylers":[{"visibility":"off"}]},{"featureType":"transit.station.airport","elementType":"labels","stylers":[{"visibility":"off"}]},{"featureType":"water","elementType":"geometry","stylers":[{"color":"#83888B"}]},{"featureType":"water","elementType":"labels","stylers":[{"visibility":"off"}]}];
