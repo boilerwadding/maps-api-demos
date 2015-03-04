@@ -1,0 +1,103 @@
+{
+  "Layers": {
+    "@type": "Observation",
+    "BaseUrl": {
+      "@forServiceTimeFormat": "Times",
+      "$": "http://datapoint.metoffice.gov.uk/public/data/layer/wxobs/{LayerName}/{ImageFormat}?TIME={Time}Z&key={key}"
+    },
+    "Layer": [
+      {
+        "@displayName": "Lightning",
+        "Service": {
+          "@name": "OBSERVATIONS",
+          "LayerName": "ATDNET_Sferics",
+          "ImageFormat": "png",
+          "Times": {
+            "Time": [
+              "2014-11-12T09:15:00",
+              "2014-11-12T09:00:00",
+              "2014-11-12T08:45:00",
+              "2014-11-12T08:30:00",
+              "2014-11-12T08:15:00",
+              "2014-11-12T08:00:00",
+              "2014-11-12T07:45:00",
+              "2014-11-12T07:30:00",
+              "2014-11-12T07:15:00",
+              "2014-11-12T07:00:00",
+              "2014-11-12T06:45:00",
+              "2014-11-12T06:30:00",
+              "2014-11-12T06:15:00"
+            ]
+          }
+        }
+      },
+      {
+        "@displayName": "SatelliteIR",
+        "Service": {
+          "@name": "OBSERVATIONS",
+          "LayerName": "SATELLITE_Infrared_Fulldisk",
+          "ImageFormat": "png",
+          "Times": {
+            "Time": [
+              "2014-11-12T09:00:00",
+              "2014-11-12T06:00:00",
+              "2014-11-12T03:00:00",
+              "2014-11-12T00:00:00",
+              "2014-11-11T21:00:00",
+              "2014-11-11T18:00:00",
+              "2014-11-11T15:00:00",
+              "2014-11-11T12:00:00",
+              "2014-11-11T09:00:00"
+            ]
+          }
+        }
+      },
+      {
+        "@displayName": "SatelliteVis",
+        "Service": {
+          "@name": "OBSERVATIONS",
+          "LayerName": "SATELLITE_Visible_N_Section",
+          "ImageFormat": "png",
+          "Times": {
+            "Time": [
+              "2014-11-12T09:00:00",
+              "2014-11-12T06:00:00",
+              "2014-11-12T03:00:00",
+              "2014-11-12T00:00:00",
+              "2014-11-11T21:00:00",
+              "2014-11-11T18:00:00",
+              "2014-11-11T15:00:00",
+              "2014-11-11T12:00:00",
+              "2014-11-11T09:00:00"
+            ]
+          }
+        }
+      },
+      {
+        "@displayName": "Rainfall",
+        "Service": {
+          "@name": "OBSERVATIONS",
+          "LayerName": "RADAR_UK_Composite_Highres",
+          "ImageFormat": "png",
+          "Times": {
+            "Time": [
+              "2014-11-12T09:15:00",
+              "2014-11-12T09:00:00",
+              "2014-11-12T08:45:00",
+              "2014-11-12T08:30:00",
+              "2014-11-12T08:15:00",
+              "2014-11-12T08:00:00",
+              "2014-11-12T07:45:00",
+              "2014-11-12T07:30:00",
+              "2014-11-12T07:15:00",
+              "2014-11-12T07:00:00",
+              "2014-11-12T06:45:00",
+              "2014-11-12T06:30:00",
+              "2014-11-12T06:15:00"
+            ]
+          }
+        }
+      }
+    ]
+  }
+} 
