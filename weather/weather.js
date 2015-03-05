@@ -14,6 +14,9 @@ var currentLayer = 0;
 //global to allow me to inspect the MetOffice data object :-/
 var moData = "";
 
+//store timestamps for each set of tiles
+var times = [];
+
 //array of OverlayMapType definition objects
 var overlayMaps = [];
 
@@ -28,22 +31,6 @@ var cycleTimeout = null;
 
 var map;
 
-var Geo = {
-    map: null,
-    mdl: null,
-    trafficLayer: null,
-    gmeLayerCount: 0,
-    initialise: function(){
-      var myLatlng = new google.maps.LatLng(55.5,-1.582667);
-         var myOptions = {
-           zoom: 6,
-           center: myLatlng,
-           mapTypeId: google.maps.MapTypeId.TERRAIN
-         };
-         this.map = new google.maps.Map(document.getElementById("map_canvas"),
-             myOptions);
-    }
-};
 window.datapointCallback = function(data){
   moData = data;
   parseMoData();
@@ -53,24 +40,12 @@ function init(){
 
   initMap();
   getData();
-  //getMoData();
 
-  //$("#addLightning").bind('click', animateLightning);
   addListener("addLightning", animateLightning);
-
-  //$("#addRainfall").bind('click', animateRainfall);
   addListener("addRainfall", animateRainfall);
-
-  //$("#addSatelliteIR").bind('click', animateIR);
   addListener("addSatelliteIR", animateIR);
-
-  //$("#addSatelliteVis").bind('click', animateSat);
   addListener("addSatelliteVis", animateSat);
-
-  //$("#stopRainfall").bind('click', function(){animate=false;});
   addListener("stopRainfall", function(){animate=false;});
-
-  //$("#clearMap").bind('click', clearLayers);
   addListener("clearMap", clearLayers);
 }
 
@@ -91,15 +66,6 @@ function getData(){
   document.body.appendChild(scriptElement);
 }
 
-// function getMoData(){
-//   $.ajax({
-//     url: 'https://boilerwadding.appspot.com/',
-//     dataType: "jsonp",
-//     success: loadMoData,
-//     error: moDataError
-//   });
-// }
-
 function loadMoData(response){
   //$("#message").html('Met Office data loaded.');
   console.log("Met Office data loaded.");
@@ -119,8 +85,8 @@ function parseMoData(){
 
     for(var t = 0;t<times.length;t++){
       opts = getMoMapOptions(service["@name"], service.LayerName, times[t], layer["@displayName"] + "_" + t);
-
-      overlayMaps[olIndex] = times[t];
+      overlayMaps[olIndex] = opts;
+      times[olIndex] = times[t];
 
       //store lookup between layer type and overlay indices
       //each layer type has multiple timestamped versions
@@ -131,7 +97,7 @@ function parseMoData(){
       }
       //this causes 44 layers to each request tiles for the current map extent.
       //TO DO - refactor to store ImageMapType objects until needed.
-      map.overlayMapTypes.insertAt(olIndex, new google.maps.ImageMapType(opts));
+      //map.overlayMapTypes.insertAt(olIndex, new google.maps.ImageMapType(opts));
       olIndex++;
     }
 
@@ -145,14 +111,22 @@ function moDataError(){
 
 
 function animateRainfall(){
+  map.overlayMapTypes.clear();
+  var indices = mapLayers[name];
+  for(var i=0;i<indices.length;i++){
+    var ol = overlayMaps[indices[i]];
+    var olIndex = map.overlayMapTypes.push(new google.maps.ImageMapType(opts));
+    map.overlayMapTypes.getAt(olIndex).setOpacity(0);
+  }
   clearTimeout(cycleTimeout);
-  animate=false;
-  clearLayers();
+  //animate=false;
+  //clearLayers();
   currentLayer = 0;
   animate = true;
   setStyle("justplaces");
   layerOpacity = 0.7;
-  cycleLayers("Rainfall");
+  //cycleLayers("Rainfall");
+  cycleOverlays();
 }
 
 function animateLightning(){
@@ -164,6 +138,21 @@ function animateLightning(){
   layerOpacity = 1;
   setStyle("justplaces");
   cycleLayers("Lightning");
+}
+
+function cycleOverlays(){
+  if(animate){
+    map.overlayMapTypes.forEach(function(el, index){
+      if(currentLayer===index){
+        el.setOpacity(layerOpacity);
+      } else {
+        el.setOpacity(0);
+      }
+
+    });
+    currentLayer++;
+    cycleTimeout = setTimeout(cycleOverlays, 1000);
+  }
 }
 
 function animateIR(){
@@ -244,7 +233,7 @@ function showLayer(index){
 }
 
 function setTimestamp(index){
-  var timestamp = overlayMaps[index];
+  var timestamp = times[index];
   var timeText = "";
   if(timestamp!=null){
     var tempTime = timestamp.split("T");
@@ -276,9 +265,6 @@ function addListener(elementId, func){
 
 
 google.maps.event.addDomListener(window, 'load', init);
-
-
-//});
 
 //http://snazzymaps.com/style/106/dark-grey-on-light-grey
 var lightGreyStyle = [{"featureType":"administrative","elementType":"labels","stylers":[{"visibility":"off"}]},{"featureType":"administrative.country","elementType":"geometry.stroke","stylers":[{"color":"#DCE7EB"}]},{"featureType":"administrative.province","elementType":"geometry.stroke","stylers":[{"color":"#DCE7EB"}]},{"featureType":"landscape","elementType":"geometry","stylers":[{"visibility":"off"}]},{"featureType":"landscape.natural","elementType":"labels","stylers":[{"visibility":"off"}]},{"featureType":"poi","elementType":"all","stylers":[{"visibility":"off"}]},{"featureType":"road","elementType":"all","stylers":[{"visibility":"off"}]},{"featureType":"road","elementType":"labels","stylers":[{"visibility":"off"}]},{"featureType":"transit","elementType":"labels.icon","stylers":[{"visibility":"off"}]},{"featureType":"transit.line","elementType":"geometry","stylers":[{"visibility":"off"}]},{"featureType":"transit.line","elementType":"labels.text","stylers":[{"visibility":"off"}]},{"featureType":"transit.station.airport","elementType":"geometry","stylers":[{"visibility":"off"}]},{"featureType":"transit.station.airport","elementType":"labels","stylers":[{"visibility":"off"}]},{"featureType":"water","elementType":"geometry","stylers":[{"color":"#83888B"}]},{"featureType":"water","elementType":"labels","stylers":[{"visibility":"off"}]}];
