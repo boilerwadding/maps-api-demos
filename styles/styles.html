@@ -1,0 +1,331 @@
+<!DOCTYPE html >
+<html xmlns="http://www.w3.org/1999/xhtml">
+	<head>
+		<title>ColorBrewer Styles</title>
+		<!-- jquery UI only used for the saturation slider. -->
+		<link rel="stylesheet" href="http://code.jquery.com/ui/1.10.3/themes/smoothness/jquery-ui.css">
+		<style type="text/css">
+			html {
+				height: 100%;
+			}
+			body {
+				height: 100%;
+				margin: 0;
+				padding: 0;
+				font-family: Calibri, Georgia, Verdana;
+			}
+			#map_canvas {
+				height: 100%;
+			}
+			article {
+				padding: 8px;
+			}
+			#mainSection {
+				position: absolute;
+				top: 5%;
+				left: 40%;
+				background-color: #ffffdd;
+				box-shadow: 10px 10px 5px #888;
+				border-radius: 15px;
+			}
+			.mainArticle {
+				font-size: 24pt;
+			}
+			.subArticle {
+				font-size: 12pt;
+			}
+			.infoContent {
+				font-family: Calibri, Georgia, Verdana;
+			}
+			#sliderContainer {
+				width: 300px;
+				height: 16px;
+			}
+			#amount {
+				border: 0;
+				color: #f6931f;
+				font-weight: bold;
+				width: 20px;
+			}
+			#MapStyle {
+				position: absolute;
+				bottom: 20px;
+				left: 40%;
+				width: 600px;
+				height: 350px;
+				background-color: #ffffdd;
+				box-shadow: 10px 10px 5px #888;
+				border-radius: 15px;
+				display: none;
+				overflow-y: scroll;
+				z-index: 1000;
+			}
+			#style_json {
+				font-family: "Courier New", Courier, monospace;
+			}
+			#closePrintSection {
+				padding: 4px;
+				color: blue;
+				text-decoration: underline;
+			}
+		</style>
+
+		<script src="http://code.jquery.com/jquery-1.9.1.js"></script>
+		<script src="http://code.jquery.com/ui/1.10.3/jquery-ui.js"></script>
+
+		<!-- colorbrewer as JavaScript arrays by Mike Bostock-->
+		<script type="text/javascript" src="choro/js/colorbrewer.js"></script>
+
+		<script type="text/javascript">
+			//what are the things we can colour in? NB omit "all";
+			var mapStyles = ["administrative", "administrative.country", "administrative.land_parcel", "administrative.locality", "administrative.neighborhood", "administrative.province", "landscape", "landscape.man_made", "landscape.natural", "poi", "poi.attraction", "poi.business", "poi.government", "poi.medical", "poi.park", "poi.place_of_worship", "poi.school", "poi.sports_complex", "road", "road.arterial", "road.highway", "road.local", "transit", "transit.line", "transit.station", "transit.station.airport", "transit.station.bus", "transit.station.rail", "water"];
+
+			//empty array to hold the custom styles we'll create.
+			var mapStyleSettings = [];
+		</script>
+		<meta name="viewport" content="initial-scale=1.0, user-scalable=no" />
+		<!-- Google Maps API -->
+		<script type="text/javascript" src="http://maps.googleapis.com/maps/api/js?v=3.exp&sensor=false"></script>
+		<script type="text/javascript">
+			var saturation = 50;
+			var colourIndex = 0;
+			var map;
+
+			$(document).ready(function() {
+				//create map and centre on London
+				initialize(51.45, -0.5);
+
+				//Add the named Color Brewer schemes to a drop down list
+				listStyles();
+
+				//Set up UI event handlers
+				$("#ramps").bind('change', changeRamp);
+				$("#classes").bind('change', changeClass);
+				$("#invertColours").bind('click', updateStyle);
+				$("#slider").slider({
+					range : "max",
+					min : 0,
+					max : 100,
+					value : saturation,
+					slide : function(event, ui) {
+						$("#amount").val(ui.value);
+						saturation = ui.value;
+					},
+					stop : updateStyle
+				});
+				$("#amount").val(saturation);
+				$("#printStyleButton").bind('click', printStyle);
+				$("#autoButton").bind('click', cycleRamps);
+				$("#luckyButton").bind('click', feelingLucky);
+				$("#closePrintSection").bind('click', closeStyleSection);
+			});
+
+			//Update number of colours available for selected colour scheme
+			function changeRamp() {
+				var r = $("#ramps").val();
+				var cl = $("#classes")[0];
+				var ramps = colorbrewer[r];
+				$("#classes").empty();
+				var maxVal = 0;
+				for (var ramp in ramps) {
+					var rampInt = parseInt(ramp);
+					if (rampInt > maxVal) {
+						maxVal = rampInt;
+					}
+					cl.options.add(new Option(ramp, ramp));
+				}
+				$("#classes").val(maxVal);
+				updateStyle();
+			}
+
+			function randomNumber(min, max){
+		    	return Math.floor(Math.random() * (max - min + 1)) + min;
+		    }
+
+			function feelingLucky(){
+
+				var rampSel = $("#ramps")[0];
+				var numOptions = rampSel.options.length;
+				var r = rampSel.options[randomNumber(0, numOptions)].value;
+				var cl = $("#classes")[0];
+				var ramps = colorbrewer[r];
+				$("#classes").empty();
+				var classVals = [];
+				for (var ramp in ramps) {
+					var rampInt = parseInt(ramp);
+					classVals.push(rampInt);
+					cl.options.add(new Option(ramp, ramp));
+				}
+				$("#classes").val(classVals[randomNumber(0, classVals.length-1)]);
+				$("#ramps").val(r);
+				$("#invertColours").checked = (randomNumber(0,999) % 2==0);
+				updateStyle();
+			}
+
+			function timedUpdate(){
+				changeRamp();
+				cycleRamps();
+			}
+
+			function stopTimer(){
+				clearTimeout(updateTimeout);
+				$("#autoButton").bind('click', cycleRamps);
+				$("#autoButton").val("Auto cycle");
+			}
+			var updateTimeout;
+			function cycleRamps(){
+				var rampSel = $("#ramps")[0];
+				var numOptions = rampSel.options.length;
+				var selIndex = rampSel.selectedIndex+1;
+				if((selIndex) > (numOptions-1)){
+					selIndex = 0;
+				}
+				rampSel.options[selIndex].selected = true;
+				updateTimeout = setTimeout(timedUpdate, 1000);
+				$("#autoButton").unbind();
+				$("#autoButton").bind('click', stopTimer);
+				$("#autoButton").val("Stop");
+			}
+
+			//react when new value is chosen
+			function changeClass() {
+				updateStyle();
+			}
+
+			//Apply UI changes
+			function updateStyle() {
+				var r = $("#ramps").val();
+				var s = $("#classes").val();
+				var inv = $("#invertColours").checked;
+				console.log("creating style based on " + r + " with " + s + "colours");
+				createStyles(r, s, inv);
+			}
+
+			//Apply styles to the map
+			function setStyles() {
+				map.setOptions({
+					styles : mapStyleSettings
+				});
+			}
+
+			//Choose a colour for the chosen map styler
+			function getColour(r, s, inv) {
+				var colour = "#000000";
+				if (colorbrewer[r][s] != null) {
+
+					colour = colorbrewer[r][s][colourIndex];
+					if (inv) {
+						colourIndex--;
+					} else {
+						colourIndex++;
+					}
+					if (colourIndex > (colorbrewer[r][s].length - 1)) {
+						colourIndex = 0;
+					}
+					if (colourIndex < 0) {
+						colourIndex = colorbrewer[r][s].length - 1;
+					}
+				}
+				return colour;
+			}
+
+			//Build an array of map styles - hue & saturation only (could do visibility too)
+			function createStyles(ramp, steps, invert) {
+				mapStyleSettings = [];
+				for (var style in mapStyles) {
+
+					var s = mapStyles[style];
+
+					var newStyle = {
+						featureType : s,
+						elementType : "geometry",
+						stylers : [{
+							hue : getColour(ramp, steps, invert)
+						}, {
+							saturation : saturation
+						}]
+					};
+					mapStyleSettings.push(newStyle);
+
+				}
+				setStyles();
+			}
+
+			//set up drop down list of colour ramps
+			function listStyles() {
+				var ramps = $("#ramps")[0];
+				for (var c in colorbrewer) {
+
+					ramps.options.add(new Option(c, c));
+
+				}
+				changeRamp();
+			}
+
+			//kick off map creation etc
+			function initialize(lat, lng) {
+				var latlng = new google.maps.LatLng(lat, lng);
+
+				var myOptions = {
+					zoom : 10,
+					center : latlng,
+					mapTypeId : google.maps.MapTypeId.ROADMAP
+				};
+				map = new google.maps.Map(document.getElementById("map_canvas"), myOptions);
+			}
+
+			//Show map styles as JSON
+			function printStyle() {
+				$("#style_json").text(JSON.stringify(map.styles, undefined, 2));
+				$("#MapStyle").show();
+			}
+
+			//hide JSON
+			function closeStyleSection() {
+				$("#MapStyle").hide();
+			}
+		</script>
+	</head>
+	<body>
+		<div id="map_canvas" style="width: 100%; height: 100%"></div>
+		<section id="mainSection">
+			<article id="mainArticle" class="mainArticle">
+				ColorBrewer for Google Maps
+			</article>
+			<article id="subArticle" class="subArticle">
+				Choose a ColorBrewer scheme:
+				<select id="ramps">
+
+				</select>
+				Select the number of classes to apply:
+				<select id="classes">
+
+				</select>
+				<br/>
+				<label for="invertColours">Reverse colour order:</label>
+				<input type="checkbox" id="invertColours"/>
+				<br/>
+
+				<label for="amount">Saturation:</label>
+				<input type="text" id="amount" >
+				<div id="sliderContainer">
+					<div id="slider"></div>
+				</div>
+				<input type="button" id="printStyleButton" value="Show style JSON" title="Click to see the code"/>&nbsp;
+				<input type="button" id="autoButton" value="Auto cycle" title="Click to cycle through all styles in order" />&nbsp;
+				<input type="button" id="luckyButton" value="I'm Feeling Lucky"  title="Choose a random setting"/>&nbsp;
+				<p>
+					<small>Uses JavaScript colour scheme created by Mike Bostock, see https://github.com/mbostock/d3/tree/master/lib/colorbrewer
+						<br/>
+						Based on color specifications and designs developed by Cynthia Brewer (http://colorbrewer.org/).</small>
+				</p>
+			</article>
+		</section>
+		<section id="MapStyle">
+			<div id="closePrintSection">
+				close
+			</div>
+			<pre id="style_json"></pre>
+		</section>
+	</body>
+</html>
