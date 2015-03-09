@@ -15,7 +15,8 @@ var currentLayer = 0;
 var moData = "";
 
 //store timestamps for each set of tiles
-var times = [];
+var timestamps = [];
+var activeTimestamps = [];
 
 //array of OverlayMapType definition objects
 var overlayMaps = [];
@@ -33,6 +34,7 @@ var map;
 
 window.datapointCallback = function(data){
   moData = data;
+  console.log("Callback triggered.");
   parseMoData();
 };
 
@@ -45,8 +47,10 @@ function init(){
   addListener("addRainfall", animateRainfall);
   addListener("addSatelliteIR", animateIR);
   addListener("addSatelliteVis", animateSat);
-  addListener("stopRainfall", function(){animate=false;});
+  addListener("stopRainfall", stopAnimation);
   addListener("clearMap", clearLayers);
+
+
 }
 
 function initMap(){
@@ -63,7 +67,8 @@ function getData(){
   var scriptElement = document.createElement("script");
   scriptElement.setAttribute("type", "text/javascript");
   scriptElement.setAttribute("src", "https://boilerwadding.appspot.com/?callback=datapointCallback");
-  document.body.appendChild(scriptElement);
+  scriptElement.async=true;
+  document.head.appendChild(scriptElement);
 }
 
 function loadMoData(response){
@@ -75,8 +80,11 @@ function loadMoData(response){
 
 function parseMoData(){
   var olIndex = 0;
-  var baseUrl = moData.Layers.BaseUrl.$
-  for(var l = 0;l< moData.Layers.Layer.length;l++){
+  var baseUrl = moData.Layers.BaseUrl.$;
+  console.log(baseUrl);
+  var layers = moData.Layers.Layer.length;
+  console.log("Found " + layers + " layers.");
+  for(var l = 0;l< layers;l++){
     var layer = moData.Layers.Layer[l];
     var displayName = layer["@displayName"]; //.toUpperCase();
     var service = layer.Service;
@@ -86,7 +94,7 @@ function parseMoData(){
     for(var t = 0;t<times.length;t++){
       opts = getMoMapOptions(service["@name"], service.LayerName, times[t], layer["@displayName"] + "_" + t);
       overlayMaps[olIndex] = opts;
-      times[olIndex] = times[t];
+      timestamps[olIndex] = times[t];
 
       //store lookup between layer type and overlay indices
       //each layer type has multiple timestamped versions
@@ -108,98 +116,86 @@ function moDataError(){
   console.log("Failed to load Met Office data.")
 }
 
-
-
 function animateRainfall(){
-  map.overlayMapTypes.clear();
-  var indices = mapLayers[name];
-  for(var i=0;i<indices.length;i++){
-    var ol = overlayMaps[indices[i]];
-    var olIndex = map.overlayMapTypes.push(new google.maps.ImageMapType(opts));
-    map.overlayMapTypes.getAt(olIndex).setOpacity(0);
-  }
-  clearTimeout(cycleTimeout);
-  //animate=false;
-  //clearLayers();
-  currentLayer = 0;
-  animate = true;
   setStyle("justplaces");
-  layerOpacity = 0.7;
-  //cycleLayers("Rainfall");
-  cycleOverlays();
+  animateOverlays(mapLayers.Rainfall);
 }
 
-function animateLightning(){
-  clearTimeout(cycleTimeout);
-  animate=false;
+function animateOverlays(indices){
   clearLayers();
+  activeTimestamps = [];
+  for(var i=0;i<indices.length;i++){
+    var ol = overlayMaps[indices[i]];
+    var ts = timestamps[indices[i]];
+    var olIndex = map.overlayMapTypes.push(new google.maps.ImageMapType(ol));
+    console.log("added new overlay map type at index " + olIndex);
+    map.overlayMapTypes.getAt(olIndex-1).setOpacity(0);
+  }
+  clearTimeout(cycleTimeout);
   currentLayer = 0;
-  animate = true;
-  layerOpacity = 1;
-  setStyle("justplaces");
-  cycleLayers("Lightning");
+  startAnimation();
 }
 
 function cycleOverlays(){
+  console.log("cycleOverlays");
   if(animate){
     map.overlayMapTypes.forEach(function(el, index){
-      if(currentLayer===index){
-        el.setOpacity(layerOpacity);
-      } else {
-        el.setOpacity(0);
-      }
-
+      el.setOpacity(0);
     });
+    var olm = map.overlayMapTypes.getAt(currentLayer);
+    if(olm){
+      olm.setOpacity(layerOpacity);
+
+    }
     currentLayer++;
+    if(currentLayer==map.overlayMapTypes.getLength()){
+      currentLayer = 0;
+    }
     cycleTimeout = setTimeout(cycleOverlays, 1000);
   }
 }
 
+function animateLightning(){
+  setStyle("justplaces");
+  animateOverlays(mapLayers.Lightning);
+}
+
+
+
 function animateIR(){
-  clearTimeout(cycleTimeout);
-  animate=false;
-  clearLayers();
   if(map.getZoom()>7){
     map.setZoom(7);
   }
   setStyle("justplaces");
-  layerOpacity = 0.5;
-  currentLayer = 0;
-  animate = true;
-  cycleLayers("SatelliteIR");
+  animateOverlays(mapLayers.SatelliteIR);
 }
 
 function animateSat(){
-  clearTimeout(cycleTimeout);
-  animate=false;
-  clearLayers();
   if(map.getZoom()>7){
     map.setZoom(7);
   }
   setStyle("justplaces");
-  currentLayer = 0;
-  layerOpacity = 0.5;
-  animate = true;
-  cycleLayers("SatelliteVis");
+  animateOverlays(mapLayers.SatelliteVis);
 }
 
-function cycleLayers(name){
-  if(animate){
-    var indices = mapLayers[name];
-    if(indices!=null && indices.length>0){
-      if(currentLayer>=indices.length){
-        currentLayer = 0;
-      }
-      var overlayId = indices.length -1 - currentLayer;
-      showLayer(indices[overlayId]);
-      currentLayer++
-      cycleTimeout = setTimeout(cycleLayers, 1000, [name]);
-    }
+function stopAnimation(){
+  animate=false;
+  var btn = document.getElementById("stopRainfall");
+  btn.value = "Start";
+  btn.removeEventListener('click', stopAnimation);
+  addListener("stopRainfall", startAnimation);
+}
+
+function startAnimation(){
+  animate=true;
+  if(map.overlayMapTypes.getLength()>0){
+    cycleOverlays();
   }
+  var btn = document.getElementById("stopRainfall");
+  btn.value = "Stop";
+  btn.removeEventListener('click', startAnimation);
+  addListener("stopRainfall", stopAnimation);
 }
-
-
-
 
 function getMoMapOptions(service, layer, timestamp, name){
   var options = {
@@ -217,19 +213,7 @@ function getMoMapOptions(service, layer, timestamp, name){
 }
 
 function clearLayers(){
-  for (var i = 0; i < map.overlayMapTypes.getLength(); i++){
-    map.overlayMapTypes.getAt(i).setOpacity(0);
-  }
-}
-
-function showLayer(index){
-  console.log('Showing layer ' + index);
-  clearLayers();
-  setTimestamp(index);
-  var olm = map.overlayMapTypes.getAt(index);
-  if(olm!=null){
-    olm.setOpacity(layerOpacity);
-  }
+  map.overlayMapTypes.clear();
 }
 
 function setTimestamp(index){
