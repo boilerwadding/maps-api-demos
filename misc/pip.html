@@ -1,0 +1,52 @@
+<html>
+	<head>
+		<title>Point in Poly</title>
+		<script type="text/javascript">
+		/* original C code from http://www.ecse.rpi.edu/Homepages/wrf/Research/Short_Notes/pnpoly.html
+		int pnpoly(int nvert, float *vertx, float *verty, float testx, float testy)
+		{
+		  int i, j, c = 0;
+		  for (i = 0, j = nvert-1; i < nvert; j = i++) {
+		    if ( ((verty[i]>testy) != (verty[j]>testy)) &&
+			 (testx < (vertx[j]-vertx[i]) * (testy-verty[i]) / (verty[j]-verty[i]) + vertx[i]) )
+		       c = !c;
+		  }
+		  return c;
+		}
+		*/
+		var poly = [[-73.9980697631836,40.74468842545076],[-73.9967393875122,40.74657419673222],[-73.98983001708984,40.74595644996025],[-73.99133205413818,40.743192775723635],[-73.99592399597168,40.74283511537101]];
+		
+		
+		//work it out
+		function calculate(point){
+			var result = pointInPoly(poly, point);
+			console.log("point " + (result?"is ":"isn't ") + "inside.");
+		}
+		
+		//Ed's port of C code
+		function pointInPoly(polygon, point){
+			//convert JSON poly into two arrays & vertex count.
+			var vertx = [];
+			var verty = [];
+			var nvert = 0;
+			var testx = point[0];
+			var testy = point[1];
+			for(coord in polygon){
+				vertx[nvert] = polygon[coord][0];
+				verty[nvert] = polygon[coord][1];
+				nvert ++;
+			}
+			//original algorithm
+  		  var i, j, c = 0;
+  		  for (i = 0, j = nvert-1; i < nvert; j = i++) {
+  		    if ( ((verty[i]>testy) != (verty[j]>testy)) &&
+  			 (testx < (vertx[j]-vertx[i]) * (testy-verty[i]) / (verty[j]-verty[i]) + vertx[i]) )
+  		       c = !c;
+  		  }
+  		  return c;
+		}
+		</script>
+	</head>
+	<body>
+	</body>
+</html>

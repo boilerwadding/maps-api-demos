@@ -1,0 +1,40 @@
+	/* port of C code 
+	* see http://www.ecse.rpi.edu/Homepages/wrf/Research/Short_Notes/pnpoly.html for license
+	*/
+	function pointInPoly(polygon, point){
+		//convert JSON poly into two arrays & vertex count.
+		var vertx = [];
+		var verty = [];
+		var nvert = 0;
+		var testx = point[0];
+		var testy = point[1];
+		for(coord in polygon){
+			vertx[nvert] = polygon[coord][0];
+			verty[nvert] = polygon[coord][1];
+			nvert ++;
+		}
+
+		//original algorithm ported from C
+	  var i, j, c = 0;
+	  for (i = 0, j = nvert-1; i < nvert; j = i++) {
+	    if ( ((verty[i]>testy) != (verty[j]>testy)) &&
+		 (testx < (vertx[j]-vertx[i]) * (testy-verty[i]) / (verty[j]-verty[i]) + vertx[i]) )
+	       c = !c;
+	  }
+	  return c;
+	}
+	
+//function definition for BigQuery to reference.
+	function inPoly(row, emit){
+		var poly=[[-73.9980697631836,40.74468842545076],[-73.9967393875122,40.74657419673222],[-73.98983001708984,40.74595644996025],[-73.99133205413818,40.743192775723635],[-73.99592399597168,40.74283511537101]];
+	    var pt = [row.pickup_longitude,row.pickup_latitude];
+		var result = pointInPoly(poly, pt);    
+		if(result) emit({latitude: pt[1], longitude: pt[0]});
+	}
+	
+	bigquery.defineFunction(
+		'pointInPolygon', //this is what BQ calls
+		['pickup_latitude', 'pickup_longitude', 'pickup_datetime'], //row data to include
+    	[{name: 'latitude', type: 'float'},{name: 'longitude', type: 'float'},{name:'pickup_datetime', type:'string'}], //output data the function will return
+		inPoly //the JS function to call
+	)
