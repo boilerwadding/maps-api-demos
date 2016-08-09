@@ -1,0 +1,79 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <title>Simple Map</title>
+    <meta name="viewport" content="initial-scale=1.0">
+    <meta charset="utf-8">
+    <style>
+      html, body {
+        height: 100%;
+        margin: 0;
+        padding: 0;
+      }
+      #map {
+        height: 100%;
+      }
+    </style>
+  </head>
+  <body>
+    <div id="map"></div>
+    <script>
+      var map;
+      function initMap() {
+        map = new google.maps.Map(document.getElementById('map'), {
+          center: {lat: 40.744593, lng: -73.990370}, //Manhattan, New York
+          zoom: 12
+        });
+
+        setUpDrawingTools();
+      }
+      //add the DrawingManager and set up drawing event handlers.
+      function setUpDrawingTools(){
+        //initialize drawing manager
+        drawingManager = new google.maps.drawing.DrawingManager({
+          drawingMode: google.maps.drawing.OverlayType.CIRCLE,
+          drawingControl: true,
+          drawingControlOptions: {
+            position: google.maps.ControlPosition.TOP_LEFT,
+            drawingModes: [
+              google.maps.drawing.OverlayType.CIRCLE,
+              google.maps.drawing.OverlayType.POLYGON,
+              google.maps.drawing.OverlayType.RECTANGLE
+            ]
+          },
+          circleOptions: {
+            fillOpacity: 0
+          },
+          polygonOptions: {
+            fillOpacity: 0
+          },
+          rectangleOptions: {
+            fillOpacity: 0
+          }
+        });
+        drawingManager.setMap(map);
+
+        //drawing events
+        google.maps.event.addListener(drawingManager, 'rectanglecomplete', function (rectangle) {
+          rectangleQuery(rectangle.getBounds());
+        });
+
+        google.maps.event.addListener(drawingManager, 'circlecomplete', function (circle) {
+          circleQuery(circle);
+        });
+
+        google.maps.event.addListener(drawingManager, 'polygoncomplete', function (polygon) {
+          var path = polygon.getPaths().getAt(0);
+          var queryPolygon = [];
+          path.forEach(function(element){
+            queryPolygon.push([element.lng(),element.lat()]);
+          });
+          polygonQuery(queryPolygon);
+        });
+      }
+    </script>
+    <script src="https://maps.googleapis.com/maps/api/js?libraries=visualization,drawing&key=AIzaSyCgupI0DaHPi83pXQSF_Yo2MO4RYucQl-c
+&callback=initMap"
+    async defer></script>
+  </body>
+</html>

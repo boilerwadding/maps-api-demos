@@ -1,0 +1,203 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <title>Simple Map</title>
+    <meta name="viewport" content="initial-scale=1.0">
+    <meta charset="utf-8">
+    <style>
+      html, body {
+        height: 100%;
+        margin: 0;
+        padding: 0;
+      }
+      #map {
+        height: 100%;
+      }
+    </style>
+    <script type="text/javascript">
+    //auth
+    var clientId = '300475522592-ntc8d9kj711pl8s0ojm79k1n1b58qlbn.apps.googleusercontent.com';
+    var scopes = 'https://www.googleapis.com/auth/bigquery';
+    var datasetId = 'schaeff';
+    var projectId = 'google-platform-demo';
+    var table_name = 'nyc_cab_trips';
+    var recordLimit = 10000;
+    var jobCheckTimer = null;
+
+    var heatmap = null;
+
+    //check if the user is authorised.
+    function authorise(event) {
+      gapi.auth.authorize({client_id: clientId, scope: scopes, immediate: false}, handleAuthResult);
+      return false;
+    }
+
+    //if authorized, load BigQuery API
+    function handleAuthResult(authResult) {
+      if (authResult && !authResult.error) {
+        loadApi();
+      } else {
+        console.log("Not authorised.")
+      }
+    }
+
+    //load BigQuery client API
+    function loadApi(){
+      gapi.client.load('bigquery', 'v2').then(
+        function() {
+          initMap();
+        }
+      );
+    }
+
+
+    function sendQuery(queryString){
+      var request = gapi.client.bigquery.jobs.query({
+          "query": queryString,
+          "timeoutMs": 30000,
+          "datasetId": datasetId,
+          "projectId": projectId
+      });
+      request.execute(function(response) {
+          checkJobStatus(response.jobReference.jobId);
+      });
+    }
+
+
+    function checkJobStatus(jobId){
+      var request = gapi.client.bigquery.jobs.get({
+        "projectId": projectId,
+        "jobId": jobId
+      });
+      request.execute(function(response){
+        if(response.status.errorResult){
+          //handle any errors
+          console.log(response.status.error);
+        } else {
+          if(response.status.state == 'DONE'){
+            //get the results
+            clearTimeout(jobCheckTimer);
+            getQueryResults(jobId);
+          } else {
+            //not finished, check again in a moment
+            jobCheckTimer = setTimeout(checkJobStatus, 500, [jobId]);
+          }
+        }
+      });
+    }
+
+    function getQueryResults(jobId){
+      var request = gapi.client.bigquery.jobs.getQueryResults({
+        "projectId": projectId,
+        "jobId": jobId
+      });
+      request.execute(function(response){
+        doHeatMap(response.result.rows);
+      })
+    }
+
+
+    </script>
+  </head>
+  <body>
+    <div id="map"></div>
+    <script>
+      var map;
+      var drawingManager;
+
+      function initMap() {
+        map = new google.maps.Map(document.getElementById('map'), {
+          center: {lat: 40.744593, lng: -73.990370}, //Manhattan, New York
+          zoom: 12
+        });
+        setUpDrawingTools();
+      }
+      //add the DrawingManager and set up drawing event handlers.
+      function setUpDrawingTools(){
+        //initialize drawing manager
+        drawingManager = new google.maps.drawing.DrawingManager({
+          drawingMode: google.maps.drawing.OverlayType.CIRCLE,
+          drawingControl: true,
+          drawingControlOptions: {
+            position: google.maps.ControlPosition.TOP_LEFT,
+            drawingModes: [
+              google.maps.drawing.OverlayType.CIRCLE,
+              google.maps.drawing.OverlayType.POLYGON,
+              google.maps.drawing.OverlayType.RECTANGLE
+            ]
+          },
+          circleOptions: {
+            fillOpacity: 0
+          },
+          polygonOptions: {
+            fillOpacity: 0
+          },
+          rectangleOptions: {
+            fillOpacity: 0
+          }
+        });
+        drawingManager.setMap(map);
+
+        //drawing events
+        google.maps.event.addListener(drawingManager, 'rectanglecomplete', function (rectangle) {
+          rectangleQuery(rectangle.getBounds());
+        });
+
+        google.maps.event.addListener(drawingManager, 'circlecomplete', function (circle) {
+          circleQuery(circle);
+        });
+
+        google.maps.event.addListener(drawingManager, 'polygoncomplete', function (polygon) {
+          var path = polygon.getPaths().getAt(0);
+          var queryPolygon = [];
+          path.forEach(function(element){
+            queryPolygon.push([element.lng(),element.lat()]);
+          });
+          polygonQuery(queryPolygon);
+        });
+      }
+
+      function rectangleQuery(latLngBounds){
+        var queryString = rectangleSQL(latLngBounds.getNorthEast(), latLngBounds.getSouthWest());
+        sendQuery(queryString);
+      }
+
+      function rectangleSQL(ne, sw){
+        var queryString = "SELECT pickup_latitude, pickup_longitude "
+        queryString +=  "FROM [" + projectId +":" + datasetId + "." + table_name + "]"
+        queryString += " WHERE pickup_latitude > " + sw.lat();
+        queryString += " AND pickup_latitude < " + ne.lat();
+        queryString += " AND pickup_longitude > " + sw.lng();
+        queryString += " AND pickup_longitude < " + ne.lng();
+        queryString += " LIMIT " + recordLimit;
+        return queryString;
+      }
+
+      function doHeatMap(rows){
+        var heatmapData = [];
+        if(heatmap!=null){
+          heatmap.setMap(null);
+        }
+        for (var i = 0; i < rows.length; i++) {
+            var f = rows[i].f;
+            var coords = { lat: parseFloat(f[0].v), lng: parseFloat(f[1].v) };
+            var latLng = new google.maps.LatLng(coords);
+            heatmapData.push(latLng);
+        }
+        heatmap = new google.maps.visualization.HeatmapLayer({
+            data: heatmapData
+        });
+        heatmap.setMap(map);
+      }
+
+
+
+    </script>
+    <script src="https://maps.googleapis.com/maps/api/js?libraries=visualization,drawing&key=AIzaSyCgupI0DaHPi83pXQSF_Yo2MO4RYucQl-c"
+    async defer></script>
+    <script src="https://apis.google.com/js/client.js"></script>
+    <script type="text/javascript">
+      gapi.load("client:auth", authorise);
+    </script>
+  </body>
+</html>
