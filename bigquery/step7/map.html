@@ -110,14 +110,14 @@
 
       function initMap() {
         map = new google.maps.Map(document.getElementById('map'), {
-          center: {lat: 40.744593, lng: -73.990370}, //Manhattan, New York
+          center: {lat: 40.744593, lng: -73.990370}, // Manhattan, New York.
           zoom: 12
         });
         setUpDrawingTools();
       }
-      //add the DrawingManager and set up drawing event handlers.
+      // Add the DrawingManager and set up drawing event handlers.
       function setUpDrawingTools(){
-        //initialize drawing manager
+        // Initialize drawing manager.
         drawingManager = new google.maps.drawing.DrawingManager({
           drawingMode: google.maps.drawing.OverlayType.CIRCLE,
           drawingControl: true,
@@ -141,7 +141,7 @@
         });
         drawingManager.setMap(map);
 
-        //drawing events
+        // Handle the drawing events.
         google.maps.event.addListener(drawingManager, 'rectanglecomplete', function (rectangle) {
           rectangleQuery(rectangle.getBounds());
         });
