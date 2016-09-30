@@ -15,24 +15,24 @@
       }
     </style>
     <script type="text/javascript">
-    //auth
+    // Client ID for OAuth 2.0 authorization against BigQuery.
     var clientId = '300475522592-ntc8d9kj711pl8s0ojm79k1n1b58qlbn.apps.googleusercontent.com';
     var scopes = 'https://www.googleapis.com/auth/bigquery';
     var datasetId = 'schaeff';
     var projectId = 'google-platform-demo';
-    var table_name = 'nyc_cab_trips';
+    var tableName = 'nyc_cab_trips';
     var recordLimit = 10000;
     var jobCheckTimer = null;
 
     var heatmap = null;
 
-    //check if the user is authorised.
+    // Check if the user is authorised.
     function authorise(event) {
       gapi.auth.authorize({client_id: clientId, scope: scopes, immediate: false}, handleAuthResult);
       return false;
     }
 
-    //if authorized, load BigQuery API
+    // If authorized, load BigQuery API
     function handleAuthResult(authResult) {
       if (authResult && !authResult.error) {
         loadApi();
@@ -41,7 +41,7 @@
       }
     }
 
-    //load BigQuery client API
+    // Load BigQuery client API
     function loadApi(){
       gapi.client.load('bigquery', 'v2').then(
         function() {
@@ -70,16 +70,16 @@
         "jobId": jobId
       });
       request.execute(function(response){
-        if(response.status.errorResult){
-          //handle any errors
+        if (response.status.errorResult){
+          // Handle any errors.
           console.log(response.status.error);
         } else {
-          if(response.status.state == 'DONE'){
-            //get the results
+          if (response.status.state == 'DONE'){
+            // Get the results.
             clearTimeout(jobCheckTimer);
             getQueryResults(jobId);
           } else {
-            //not finished, check again in a moment
+            // Not finished, check again in a moment.
             jobCheckTimer = setTimeout(checkJobStatus, 500, [jobId]);
           }
         }
@@ -107,14 +107,14 @@
 
       function initMap() {
         map = new google.maps.Map(document.getElementById('map'), {
-          center: {lat: 40.744593, lng: -73.990370}, //Manhattan, New York
+          center: {lat: 40.744593, lng: -73.990370}, // Manhattan, New York.
           zoom: 12
         });
         setUpDrawingTools();
       }
-      //add the DrawingManager and set up drawing event handlers.
+      // Add the DrawingManager and set up drawing event handlers.
       function setUpDrawingTools(){
-        //initialize drawing manager
+        // Initialize drawing manager.
         drawingManager = new google.maps.drawing.DrawingManager({
           drawingMode: google.maps.drawing.OverlayType.CIRCLE,
           drawingControl: true,
@@ -138,7 +138,7 @@
         });
         drawingManager.setMap(map);
 
-        //drawing events
+        // Handle the drawing events.
         google.maps.event.addListener(drawingManager, 'rectanglecomplete', function (rectangle) {
           rectangleQuery(rectangle.getBounds());
         });
@@ -164,7 +164,7 @@
 
       function rectangleSQL(ne, sw){
         var queryString = "SELECT pickup_latitude, pickup_longitude "
-        queryString +=  "FROM [" + projectId +":" + datasetId + "." + table_name + "]"
+        queryString +=  "FROM [" + projectId +":" + datasetId + "." + tableName + "]"
         queryString += " WHERE pickup_latitude > " + sw.lat();
         queryString += " AND pickup_latitude < " + ne.lat();
         queryString += " AND pickup_longitude > " + sw.lng();
@@ -180,19 +180,19 @@
 
       function haversineSQL(center, radius){
         var queryString;
-        var center_lat = center.lat();
-        var center_lng = center.lng();
-        var km_per_degree = 111.045;
+        var centerLat = center.lat();
+        var centerLng = center.lng();
+        var kmPerDegree = 111.045;
 
         queryString = "SELECT pickup_latitude, pickup_longitude, "
-        queryString += "(" + km_per_degree + " * DEGREES( ACOS( COS( RADIANS("
-        queryString += center_lat;
-        queryString += ") ) * COS( RADIANS( pickup_latitude ) ) * COS( RADIANS( " + center_lng + " ) - RADIANS("
+        queryString += "(" + kmPerDegree + " * DEGREES( ACOS( COS( RADIANS("
+        queryString += centerLat;
+        queryString += ") ) * COS( RADIANS( pickup_latitude ) ) * COS( RADIANS( " + centerLng + " ) - RADIANS("
         queryString += " pickup_longitude ";
         queryString += ") ) + SIN( RADIANS("
-        queryString += center_lat;
+        queryString += centerLat;
         queryString += ") ) * SIN( RADIANS( pickup_latitude ) ) ) ) ) AS distance ";
-        queryString += "FROM [" + projectId +":" + datasetId + "." + table_name + "] ";
+        queryString += "FROM [" + projectId +":" + datasetId + "." + tableName + "] ";
         queryString += "HAVING distance < " + radius/1000;
         queryString += " LIMIT " + recordLimit;
         return queryString;
@@ -201,7 +201,7 @@
 
       function doHeatMap(rows){
         var heatmapData = [];
-        if(heatmap!=null){
+        if (heatmap!=null){
           heatmap.setMap(null);
         }
         for (var i = 0; i < rows.length; i++) {
