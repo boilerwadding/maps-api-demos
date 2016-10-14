@@ -42,7 +42,7 @@ limitations under the License.
     var heatmap;
 
     // Check if the user is authorized.
-    function authorise(event) {
+    function authorize(event) {
       gapi.auth.authorize({client_id: clientId, scope: scopes, immediate: false}, handleAuthResult);
       return false;
     }
@@ -212,7 +212,7 @@ limitations under the License.
     async defer></script>
     <script src="https://apis.google.com/js/client.js"></script>
     <script type="text/javascript">
-      gapi.load("client:auth", authorise);
+      gapi.load("client:auth", authorize);
     </script>
   </body>
 </html>
