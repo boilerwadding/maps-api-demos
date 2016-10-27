@@ -1,10 +1,14 @@
+# Google Maps API and BigQuery Codelab
+
 ## Synopsis
 
-This project demonstrates how to perform simple geospatial queries against a Google BigQuery table that contains latitude, longitude data in columns. It demonstrates how to use the Google Maps API to present a visual interface for the queries and the query results. The code accompanies the a codelab which can be found at [Codelab URL]. The files are arranged in sequential order to demonstrate progress through the codelab, but if you want you can jump [straight in to the finished example] (step7/map.html "Finished example")
+This is not an official Google product.
+
+This project demonstrates how to perform simple geospatial queries against a Google BigQuery table that contains latitude, longitude data in columns. It demonstrates how to use the Google Maps API to present a visual interface for the queries and the query results. The code accompanies the a codelab which can be found at [Codelab URL]. The files are arranged in sequential order to demonstrate progress through the codelab, but if you want you can jump [straight in to the finished example] (step7/map.html "Finished example").
 
 ## Motivation
 
-Illustrate some ways to work with and visualize geospatial and location data in BigQuery tables without needing specialized libraries, ETL workflows or spatial data formats.
+The project and accompanying Codelab aim to illustrate some ways to work with and visualize geospatial and location data in BigQuery tables without needing specialized libraries, ETL workflows or spatial data formats.
 
 ## Installation
 
