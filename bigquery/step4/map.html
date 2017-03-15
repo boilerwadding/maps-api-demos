@@ -153,16 +153,11 @@ limitations under the License.
       });
 
       google.maps.event.addListener(drawingManager, 'circlecomplete', function (circle) {
-        circleQuery(circle);
+        // We will add code here in a later step.
       });
 
       google.maps.event.addListener(drawingManager, 'polygoncomplete', function (polygon) {
-        var path = polygon.getPaths().getAt(0);
-        var queryPolygon = [];
-        path.forEach(function(element){
-          queryPolygon.push([element.lng(),element.lat()]);
-        });
-        polygonQuery(queryPolygon);
+        // We will add code here in a later step.
       });
     }
 
