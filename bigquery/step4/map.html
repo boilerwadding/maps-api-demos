@@ -33,9 +33,10 @@ limitations under the License.
     // Client ID for OAuth 2.0 authorization against BigQuery.
     var clientId = 'YOUR_CLIENT_ID';
     // BigQuery settings. Replace these with your project, dataset and table names.
-    var datasetId = 'YOUR_DATASET_ID';
-    var projectId = 'YOUR_PROJECT_ID';
-    var tableName = 'YOUR_TABLE_NAME';
+    var billingProjectId = 'YOUR_PROJECT_ID';
+    var publicProjectId = 'bigquery-public-data';
+    var datasetId = 'new_york';
+    var tableName = 'tlc_yellow_trips_2016';
     var scopes = 'https://www.googleapis.com/auth/bigquery';
 
     var map;
@@ -70,7 +71,7 @@ limitations under the License.
           'query': queryString,
           'timeoutMs': 30000,
           'datasetId': datasetId,
-          'projectId': projectId
+          'projectId': billingProjectId
       });
       request.execute(function(response) {
           checkJobStatus(response.jobReference.jobId);
@@ -80,7 +81,7 @@ limitations under the License.
     // Poll a job to see if it has finished executing.
     function checkJobStatus(jobId){
       var request = gapi.client.bigquery.jobs.get({
-        'projectId': projectId,
+        'projectId': billingProjectId,
         'jobId': jobId
       });
       request.execute(function(response){
@@ -103,7 +104,7 @@ limitations under the License.
     // When a BigQuery job has completed, fetch the results.
     function getQueryResults(jobId){
       var request = gapi.client.bigquery.jobs.getQueryResults({
-        'projectId': projectId,
+        'projectId': billingProjectId,
         'jobId': jobId
       });
       request.execute(function(response){
@@ -171,7 +172,7 @@ limitations under the License.
 
     function rectangleSQL(ne, sw){
       var queryString = 'SELECT pickup_latitude, pickup_longitude '
-      queryString +=  'FROM [' + projectId +':' + datasetId + '.' + tableName + ']'
+      queryString +=  'FROM [' + publicProjectId +':' + datasetId + '.' + tableName + ']'
       queryString += ' WHERE pickup_latitude > ' + sw.lat();
       queryString += ' AND pickup_latitude < ' + ne.lat();
       queryString += ' AND pickup_longitude > ' + sw.lng();
