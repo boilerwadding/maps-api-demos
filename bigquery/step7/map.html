@@ -48,16 +48,6 @@ limitations under the License.
     var drawingManager;
     var heatmap;
 
-    // The BigQuery User Defined Function definition.
-    var bigqueryDefine = 'bigquery.defineFunction(' +
-      '"pointInPolygon", ' +
-      '["pickup_latitude", "pickup_longitude", "pickup_datetime"],' +
-      '[' +
-        '{name: "latitude", type: "float"},' +
-        '{name: "longitude", type: "float"},' +
-        '{name:"pickup_datetime", type:"string"}' +
-      '], inPoly); ';
-
     // Check if the user is authorized.
     function authorize(event) {
       gapi.auth.authorize({client_id: clientId, scope: scopes, immediate: false}, handleAuthResult);
@@ -239,13 +229,8 @@ limitations under the License.
           {
             'query':
             {
-              'userDefinedFunctionResources':
-              [
-                {
-                  'inlineCode': buildUDF(polygon)
-                }
-              ],
-              'query': polygonSQL()
+              'query': polygonSQL(polygon),
+              'useLegacySql': false
             }
           }
         }
@@ -255,21 +240,34 @@ limitations under the License.
       });
     }
 
-    // Construct a User Defined Function for BigQuery.
-    function buildUDF(poly){
-      // JavaScript function for point in polygon is loaded from external script third_party/point_in_polygon.js.
-      var UDFjs = bigqueryDefine + inLineJs;
-      UDFjs += 'function inPoly(row, emit){var poly=' + JSON.stringify(poly);
-      UDFjs += ';var pt = [row.pickup_longitude,row.pickup_latitude];';
-      UDFjs += 'var result = pointInPoly(poly, pt);if(result) emit({latitude: pt[1], longitude: pt[0]});}'
-      return UDFjs;
-    }
-
-    function polygonSQL(){
-      var queryString = 'SELECT latitude,longitude ';
-      queryString += 'FROM pointInPolygon(';
-      queryString += '  SELECT pickup_longitude, pickup_latitude, pickup_datetime ';
-      queryString += '  FROM [' + publicProjectId + ':' + datasetId + '.' + tableName + '] ) ';
+    //Build a BigQuery User Defined Function based SQL Query
+    //This uses Standard SQL - see map_legacySql.html for a version that uses BigQuery Legacy SQL
+    function polygonSQL(poly){
+      var queryString = 'CREATE TEMPORARY FUNCTION pointInPolygon(latitude FLOAT64, longitude FLOAT64) ';
+      queryString += 'RETURNS BOOL LANGUAGE js AS """ ';
+      queryString += 'var polygon=' + JSON.stringify(poly) + ';';
+      queryString += 'var vertx = [];';
+      queryString += 'var verty = [];';
+      queryString += 'var nvert = 0;';
+      queryString += 'var testx = longitude;';
+      queryString += 'var testy = latitude;';
+      queryString += 'for(coord in polygon){';
+      queryString += '  vertx[nvert] = polygon[coord][0];';
+      queryString += '  verty[nvert] = polygon[coord][1];';
+      queryString += '  nvert ++;';
+      queryString += '}';
+      queryString += 'var i, j, c = 0;';
+      queryString += 'for (i = 0, j = nvert-1; i < nvert; j = i++) {';
+      queryString += '  if ( ((verty[i]>testy) != (verty[j]>testy)) &&(testx < (vertx[j]-vertx[i]) * (testy-verty[i]) / (verty[j]-verty[i]) + vertx[i]) ){';
+      queryString += '    c = !c;';
+      queryString += '  }';
+      queryString += '}';
+      queryString += 'return c;';
+      queryString += '"""; ';
+      queryString += 'SELECT pickup_latitude, pickup_longitude, dropoff_latitude, dropoff_longitude, pickup_datetime ';
+      queryString += 'FROM `' + projectId + '.' + datasetId + '.' + tableName + '` ';
+      queryString += 'WHERE pointInPolygon(pickup_latitude, pickup_longitude) = TRUE ';
+      queryString += 'LIMIT ' + recordLimit;
       return queryString;
     }
 
