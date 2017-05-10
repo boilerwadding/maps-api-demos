@@ -3,14 +3,14 @@
 <!--
 Copyright 2016 Google Inc.
 
-Licensed under the Apache License, Version 2.0 (the "License");
+Licensed under the Apache License, Version 2.0 (the 'License');
 you may not use this file except in compliance with the License.
 You may obtain a copy of the License at
 
     http://www.apache.org/licenses/LICENSE-2.0
 
 Unless required by applicable law or agreed to in writing, software
-distributed under the License is distributed on an "AS IS" BASIS,
+distributed under the License is distributed on an 'AS IS' BASIS,
 WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License.
@@ -40,23 +40,12 @@ limitations under the License.
     var tableName = 'tlc_yellow_trips_2016';
     var scopes = 'https://www.googleapis.com/auth/bigquery';
 
-    // Limit the number of records that a query will return.
-    var recordLimit = 10000;
+    // Limit the number of records that a query will return.    var recordLimit = 10000;
     var jobCheckTimer;
 
     var map;
     var drawingManager;
     var heatmap;
-
-    // The BigQuery User Defined Function definition.
-    var bigqueryDefine = 'bigquery.defineFunction(' +
-      '"pointInPolygon", ' +
-      '["pickup_latitude", "pickup_longitude", "pickup_datetime"],' +
-      '[' +
-        '{name: "latitude", type: "float"},' +
-        '{name: "longitude", type: "float"},' +
-        '{name:"pickup_datetime", type:"string"}' +
-      '], inPoly); ';
 
     // Check if the user is authorized.
     function authorize(event) {
@@ -64,7 +53,7 @@ limitations under the License.
       return false;
     }
 
-    // If authorized, load BigQuery API.
+    // If authorized, load BigQuery API
     function handleAuthResult(authResult) {
       if (authResult && !authResult.error) {
         loadApi();
@@ -104,15 +93,15 @@ limitations under the License.
       });
       request.execute(function(response){
         if (response.status.errorResult){
-          // Handle any errors.
+          // Handle any errors
           console.log(response.status.error);
         } else {
           if (response.status.state == 'DONE'){
-            // Get the results.
+            // Get the results
             clearTimeout(jobCheckTimer);
             getQueryResults(jobId);
           } else {
-            // Not finished, check again in a moment.
+            // Not finished, check again in a moment
             jobCheckTimer = setTimeout(checkJobStatus, 500, [jobId]);
           }
         }
@@ -142,7 +131,7 @@ limitations under the License.
 
     // Add the DrawingManager and set up drawing event handlers.
     function setUpDrawingTools(){
-      // Initialize drawing manager.
+      // Initialize drawing manager
       drawingManager = new google.maps.drawing.DrawingManager({
         drawingMode: google.maps.drawing.OverlayType.CIRCLE,
         drawingControl: true,
@@ -166,22 +155,17 @@ limitations under the License.
       });
       drawingManager.setMap(map);
 
-      // Handle the drawing events.
+      // Handle the drawing events
       google.maps.event.addListener(drawingManager, 'rectanglecomplete', function (rectangle) {
         rectangleQuery(rectangle.getBounds());
       });
 
       google.maps.event.addListener(drawingManager, 'circlecomplete', function (circle) {
-        circleQuery(circle);
+        // We will add code here in a later step.
       });
 
       google.maps.event.addListener(drawingManager, 'polygoncomplete', function (polygon) {
-        var path = polygon.getPaths().getAt(0);
-        var queryPolygon = [];
-        path.forEach(function(element){
-          queryPolygon.push([element.lng(),element.lat()]);
-        });
-        polygonQuery(queryPolygon);
+        // We will add code here in a later step.
       });
     }
 
@@ -201,76 +185,6 @@ limitations under the License.
       queryString += ' AND pickup_longitude > ' + sw.lng();
       queryString += ' AND pickup_longitude < ' + ne.lng();
       queryString += ' LIMIT ' + recordLimit;
-      return queryString;
-    }
-
-    // Query an area by point & radius.
-    function circleQuery(circle){
-      var queryString = haversineSQL(circle.getCenter(), circle.radius);
-      sendQuery(queryString);
-    }
-
-    // Calculate a circular area on the surface of a sphere based on a center and radius.
-    function haversineSQL(center, radius){
-      var queryString;
-      var centerLat = center.lat();
-      var centerLng = center.lng();
-      var kmPerDegree = 111.045;
-
-      queryString = 'SELECT pickup_latitude, pickup_longitude, '
-      queryString += '(' + kmPerDegree + ' * DEGREES( ACOS( COS( RADIANS('
-      queryString += centerLat;
-      queryString += ') ) * COS( RADIANS( pickup_latitude ) ) * COS( RADIANS( ' + centerLng + ' ) - RADIANS('
-      queryString += ' pickup_longitude ';
-      queryString += ') ) + SIN( RADIANS('
-      queryString += centerLat;
-      queryString += ') ) * SIN( RADIANS( pickup_latitude ) ) ) ) ) AS distance ';
-      queryString += 'FROM [' + publicProjectId +':' + datasetId + '.' + tableName + '] ';
-      queryString += 'HAVING distance < ' + radius/1000;
-      queryString += ' LIMIT ' + recordLimit;
-      return queryString;
-    }
-
-    // Query an arbitrary shape drawn by the user.
-    function polygonQuery(polygon) {
-     var request = gapi.client.bigquery.jobs.insert({
-        'projectId' : billingProjectId,
-        'resource' : {
-          'configuration':
-          {
-            'query':
-            {
-              'userDefinedFunctionResources':
-              [
-                {
-                  'inlineCode': buildUDF(polygon)
-                }
-              ],
-              'query': polygonSQL()
-            }
-          }
-        }
-      });
-      request.execute(function(response) {
-          checkJobStatus(response.jobReference.jobId);
-      });
-    }
-
-    // Construct a User Defined Function for BigQuery.
-    function buildUDF(poly){
-      // JavaScript function for point in polygon is loaded from external script third_party/point_in_polygon.js.
-      var UDFjs = bigqueryDefine + inLineJs;
-      UDFjs += 'function inPoly(row, emit){var poly=' + JSON.stringify(poly);
-      UDFjs += ';var pt = [row.pickup_longitude,row.pickup_latitude];';
-      UDFjs += 'var result = pointInPoly(poly, pt);if(result) emit({latitude: pt[1], longitude: pt[0]});}'
-      return UDFjs;
-    }
-
-    function polygonSQL(){
-      var queryString = 'SELECT latitude,longitude ';
-      queryString += 'FROM pointInPolygon(';
-      queryString += '  SELECT pickup_longitude, pickup_latitude, pickup_datetime ';
-      queryString += '  FROM [' + publicProjectId + ':' + datasetId + '.' + tableName + '] ) ';
       return queryString;
     }
 
@@ -298,7 +212,6 @@ limitations under the License.
     <script src="https://maps.googleapis.com/maps/api/js?libraries=visualization,drawing&key=YOUR_API_KEY"
     async defer></script>
     <script src="https://apis.google.com/js/client.js"></script>
-    <script src="../third_party/point_in_polygon.js"></script>
     <script type="text/javascript">
       gapi.load('client:auth', authorize);
     </script>

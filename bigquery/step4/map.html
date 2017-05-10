@@ -71,7 +71,8 @@ limitations under the License.
           'query': queryString,
           'timeoutMs': 30000,
           'datasetId': datasetId,
-          'projectId': billingProjectId
+          'projectId': billingProjectId,
+          'useLegacySql':false
       });
       request.execute(function(response) {
           checkJobStatus(response.jobReference.jobId);
@@ -172,7 +173,7 @@ limitations under the License.
 
     function rectangleSQL(ne, sw){
       var queryString = 'SELECT pickup_latitude, pickup_longitude '
-      queryString +=  'FROM [' + publicProjectId +':' + datasetId + '.' + tableName + ']'
+      queryString +=  'FROM `' + publicProjectId +'.' + datasetId + '.' + tableName + '`'
       queryString += ' WHERE pickup_latitude > ' + sw.lat();
       queryString += ' AND pickup_latitude < ' + ne.lat();
       queryString += ' AND pickup_longitude > ' + sw.lng();

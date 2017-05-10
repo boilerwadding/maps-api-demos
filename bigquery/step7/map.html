@@ -78,7 +78,8 @@ limitations under the License.
           'query': queryString,
           'timeoutMs': 30000,
           'datasetId': datasetId,
-          'projectId': billingProjectId
+          'projectId': billingProjectId,
+          'useLegacySql':false
       });
       request.execute(function(response) {
           checkJobStatus(response.jobReference.jobId);
@@ -184,7 +185,7 @@ limitations under the License.
 
     function rectangleSQL(ne, sw){
       var queryString = 'SELECT pickup_latitude, pickup_longitude '
-      queryString +=  'FROM [' + publicProjectId +':' + datasetId + '.' + tableName + ']'
+      queryString +=  'FROM `' + publicProjectId +'.' + datasetId + '.' + tableName + '`'
       queryString += ' WHERE pickup_latitude > ' + sw.lat();
       queryString += ' AND pickup_latitude < ' + ne.lat();
       queryString += ' AND pickup_longitude > ' + sw.lng();
@@ -206,16 +207,28 @@ limitations under the License.
       var centerLng = center.lng();
       var kmPerDegree = 111.045;
 
-      queryString = 'SELECT pickup_latitude, pickup_longitude, '
+      queryString = 'CREATE TEMPORARY FUNCTION Degrees(radians FLOAT64) RETURNS FLOAT64 LANGUAGE js AS ';
+      queryString += '""" ';
+      queryString += 'return (radians*180)/(22/7);';
+      queryString += '"""; ';
+
+      queryString += 'CREATE TEMPORARY FUNCTION Radians(degrees FLOAT64) RETURNS FLOAT64 LANGUAGE js AS';
+      queryString += '""" ';
+      queryString += 'return (degrees*(22/7))/180;';
+      queryString += '"""; ';
+
+      queryString += 'SELECT pickup_latitude, pickup_longitude '
+      queryString += 'FROM `' + projectId +'.' + datasetId + '.' + tableName + '` ';
+      queryString += 'WHERE '
       queryString += '(' + kmPerDegree + ' * DEGREES( ACOS( COS( RADIANS('
       queryString += centerLat;
       queryString += ') ) * COS( RADIANS( pickup_latitude ) ) * COS( RADIANS( ' + centerLng + ' ) - RADIANS('
       queryString += ' pickup_longitude ';
       queryString += ') ) + SIN( RADIANS('
       queryString += centerLat;
-      queryString += ') ) * SIN( RADIANS( pickup_latitude ) ) ) ) ) AS distance ';
-      queryString += 'FROM [' + publicProjectId +':' + datasetId + '.' + tableName + '] ';
-      queryString += 'HAVING distance < ' + radius/1000;
+      queryString += ') ) * SIN( RADIANS( pickup_latitude ) ) ) ) ) ';
+
+      queryString += ' < ' + radius/1000;
       queryString += ' LIMIT ' + recordLimit;
       return queryString;
     }
