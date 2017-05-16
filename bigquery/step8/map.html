@@ -382,7 +382,7 @@ limitations under the License.
     }
 
     function rectangleSQL(ne, sw){
-      var queryString = 'SELECT pickup_latitude, pickup_longitude '
+      var queryString = 'SELECT pickup_latitude, pickup_longitude, dropoff_latitude, dropoff_longitude '
       queryString +=  'FROM `' + publicProjectId +'.' + datasetId + '.' + tableName + '`'
       queryString += ' WHERE pickup_latitude > ' + sw.lat();
       queryString += ' AND pickup_latitude < ' + ne.lat();
@@ -415,8 +415,8 @@ limitations under the License.
       queryString += 'return (degrees*(22/7))/180;';
       queryString += '"""; ';
 
-      queryString += 'SELECT pickup_latitude, pickup_longitude '
-      queryString += 'FROM `' + projectId +'.' + datasetId + '.' + tableName + '` ';
+      queryString += 'SELECT pickup_latitude, pickup_longitude, dropoff_latitude, dropoff_longitude '
+      queryString += 'FROM `' + publicProjectId +'.' + datasetId + '.' + tableName + '` ';
       queryString += 'WHERE '
       queryString += '(' + kmPerDegree + ' * DEGREES( ACOS( COS( RADIANS('
       queryString += centerLat;
@@ -476,7 +476,7 @@ limitations under the License.
       queryString += 'return c;';
       queryString += '"""; ';
       queryString += 'SELECT pickup_latitude, pickup_longitude, dropoff_latitude, dropoff_longitude, pickup_datetime ';
-      queryString += 'FROM `' + projectId + '.' + datasetId + '.' + tableName + '` ';
+      queryString += 'FROM `' + publicProjectId + '.' + datasetId + '.' + tableName + '` ';
       queryString += 'WHERE pointInPolygon(pickup_latitude, pickup_longitude) = TRUE ';
       queryString += 'LIMIT ' + recordLimit;
       return queryString;
@@ -538,7 +538,7 @@ limitations under the License.
     <div id="map"></div>
 
     <!-- LOADING SPINNER -->
-    <img id="spinner" class="fade" src="img/loader.gif">
+    <img id="spinner" class="fade" src="../img/loader.gif">
     <!-- MENU -->
     <div id="menu">
         <div id="stats">

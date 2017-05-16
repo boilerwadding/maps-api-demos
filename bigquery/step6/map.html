@@ -212,7 +212,7 @@ limitations under the License.
       queryString += '"""; ';
 
       queryString += 'SELECT pickup_latitude, pickup_longitude '
-      queryString += 'FROM `' + projectId +'.' + datasetId + '.' + tableName + '` ';
+      queryString += 'FROM `' + publicProjectId +'.' + datasetId + '.' + tableName + '` ';
       queryString += 'WHERE '
       queryString += '(' + kmPerDegree + ' * DEGREES( ACOS( COS( RADIANS('
       queryString += centerLat;

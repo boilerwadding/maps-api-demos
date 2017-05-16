@@ -218,7 +218,7 @@ limitations under the License.
       queryString += '"""; ';
 
       queryString += 'SELECT pickup_latitude, pickup_longitude '
-      queryString += 'FROM `' + projectId +'.' + datasetId + '.' + tableName + '` ';
+      queryString += 'FROM `' + publicProjectId +'.' + datasetId + '.' + tableName + '` ';
       queryString += 'WHERE '
       queryString += '(' + kmPerDegree + ' * DEGREES( ACOS( COS( RADIANS('
       queryString += centerLat;
@@ -278,7 +278,7 @@ limitations under the License.
       queryString += 'return c;';
       queryString += '"""; ';
       queryString += 'SELECT pickup_latitude, pickup_longitude, dropoff_latitude, dropoff_longitude, pickup_datetime ';
-      queryString += 'FROM `' + projectId + '.' + datasetId + '.' + tableName + '` ';
+      queryString += 'FROM `' + publicProjectId + '.' + datasetId + '.' + tableName + '` ';
       queryString += 'WHERE pointInPolygon(pickup_latitude, pickup_longitude) = TRUE ';
       queryString += 'LIMIT ' + recordLimit;
       return queryString;
