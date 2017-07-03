@@ -177,9 +177,8 @@ limitations under the License.
 
       drawingManager.addListener('polygoncomplete', function (polygon) {
         var path = polygon.getPaths().getAt(0);
-        var queryPolygon = [];
-        path.forEach(function(element){
-          queryPolygon.push([element.lng(),element.lat()]);
+        var queryPolygon = path.map(function(element) {
+          return [element.lng(), element.lat()];
         });
         polygonQuery(queryPolygon);
       });
