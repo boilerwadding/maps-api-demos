@@ -151,15 +151,15 @@ limitations under the License.
       drawingManager.setMap(map);
 
       // Handle the drawing events.
-      google.maps.event.addListener(drawingManager, 'rectanglecomplete', function (rectangle) {
+      drawingManager.addListener('rectanglecomplete', function (rectangle) {
         rectangleQuery(rectangle.getBounds());
       });
 
-      google.maps.event.addListener(drawingManager, 'circlecomplete', function (circle) {
+      drawingManager.addListener('circlecomplete', function (circle) {
         // We will add code here in a later step.
       });
 
-      google.maps.event.addListener(drawingManager, 'polygoncomplete', function (polygon) {
+      drawingManager.addListener('polygoncomplete', function (polygon) {
         // We will add code here in a later step.
       });
     }
